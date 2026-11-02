@@ -1,6 +1,7 @@
 const GRUPPEN = {
   'Pylon und Hof': {
     'Vor dem Pylon': [0, 75, 0, 12, 0],
+    'Mammisi': [-36, 79.3, 90, 3, 0],
     'Pylonturm, langer Raum': [16.5, 40.5, 90, 0, 0, 4.19],
     'Pylonturm, Treppe': [21.0, 39.3, 180, 20, 0, 13.8],
     'Pylonturm, Plattform': [12, 37, 15, -14, 1, 33.5],
@@ -27,11 +28,13 @@ const GRUPPEN = {
     'Allerheiligstes': [0, -63.5, 0, 5, 0],
     'Korridor der Mysterien': [5.7, -65, 0, 0, 0],
     'Kapelle des Götterthrons': [-9.0, -69.5, 90, -12, 0],
+    'Umgang': [19, -40, 0, 3, 0],
+    'Nilometer': [26, -68.8, -90, -20, 0],
   },
 };
 const ANSICHTEN = Object.assign({}, ...Object.values(GRUPPEN));
-const RUNDGANG = ['Vor dem Pylon', 'Hof', 'Pronaos', 'Bibliothek', 'Festsaal', 'Schatzkammer', 'Opfertischsaal, Blick zur Westtür',
+const RUNDGANG = ['Vor dem Pylon', 'Mammisi', 'Hof', 'Pronaos', 'Bibliothek', 'Festsaal', 'Schatzkammer', 'Opfertischsaal, Blick zur Westtür',
   'Osttreppe', 'Dach über der Westtreppe', 'Hof des Reinheitsplatzes', 'Mittlerer Saal, Blick ins Allerheiligste', 'Allerheiligstes',
-  'Korridor der Mysterien', 'Kapelle des Götterthrons', 'Pylonturm, Plattform'];
+  'Korridor der Mysterien', 'Kapelle des Götterthrons', 'Umgang', 'Nilometer', 'Pylonturm, Plattform'];
 
 export { ANSICHTEN, GRUPPEN, RUNDGANG };

@@ -91,7 +91,7 @@ addEventListener('touchmove', e => {
       stickEl.className = stick.f > 0.9 ? 'on run' : 'on';
     } else if (t.identifier === swipe.id) {
       const k = 800 / Math.min(innerWidth, innerHeight);
-      look((t.clientX - swipe.x) * k, (t.clientY - swipe.y) * k);
+      look((swipe.x - t.clientX) * k, (swipe.y - t.clientY) * k);
       swipe.x = t.clientX;
       swipe.y = t.clientY;
     }

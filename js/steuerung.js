@@ -69,12 +69,10 @@ addEventListener('touchstart', e => {
   if (onUI(e)) return;
   e.preventDefault();
   document.documentElement.classList.add('touch');
+  const r = stickEl.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   for (const t of e.changedTouches) {
-    if (t.clientX < innerWidth / 2 && stick.id === null) {
-      Object.assign(stick, { id: t.identifier, x0: t.clientX, y0: t.clientY, f: 0, s: 0 });
-      stickEl.style.left = `${t.clientX}px`;
-      stickEl.style.top = `${t.clientY}px`;
-      knobEl.style.transform = '';
+    if (stick.id === null && Math.hypot(t.clientX - cx, t.clientY - cy) < STICK + 24) {
+      Object.assign(stick, { id: t.identifier, x0: cx, y0: cy, f: 0, s: 0 });
       stickEl.className = 'on';
     } else if (swipe.id === null) Object.assign(swipe, { id: t.identifier, x: t.clientX, y: t.clientY });
   }
@@ -90,7 +88,7 @@ addEventListener('touchmove', e => {
       stick.s = dx / STICK;
       stick.f = -dy / STICK;
       knobEl.style.transform = `translate(${dx}px, ${dy}px)`;
-      stickEl.className = len > STICK * 0.95 ? 'on run' : 'on';
+      stickEl.className = stick.f > 0.9 ? 'on run' : 'on';
     } else if (t.identifier === swipe.id) {
       const k = 800 / Math.min(innerWidth, innerHeight);
       look((t.clientX - swipe.x) * k, (t.clientY - swipe.y) * k);
@@ -104,7 +102,7 @@ const release = e => {
     if (t.identifier === stick.id) {
       stick.id = null;
       stick.f = stick.s = 0;
-      stickEl.className = stickEl.style.left = stickEl.style.top = knobEl.style.transform = '';
+      stickEl.className = knobEl.style.transform = '';
     }
     if (t.identifier === swipe.id) swipe.id = null;
   }
@@ -186,11 +184,11 @@ function updateControls(dt) {
   if (keys.KeyS || keys.ArrowDown) f -= 1;
   if (keys.KeyD || keys.ArrowRight) s += 1;
   if (keys.KeyA || keys.ArrowLeft) s -= 1;
-  const push = Math.hypot(stick.f, stick.s);
-  if (!f && !s && push > 0.15) {
+  const turn = Math.max(0, Math.abs(stick.s) - 0.15) / 0.85;
+  yaw -= Math.sign(stick.s) * turn * turn * 1.8 * dt;
+  if (!f && !s && Math.abs(stick.f) > 0.15) {
     f = stick.f;
-    s = stick.s;
-    gait = push > 0.95 ? 3.0 : 1.4 * Math.min(1, push / 0.8);
+    gait = f > 0.9 ? 3.0 : 1.4 * Math.min(1, Math.abs(f) / 0.8);
   }
   let speed = gait * dt;
   if (f || s) {

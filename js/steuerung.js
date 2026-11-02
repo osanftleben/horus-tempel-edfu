@@ -87,6 +87,7 @@ addEventListener('touchstart', e => {
   if (onUI(e)) return;
   e.preventDefault();
   document.documentElement.classList.add('touch');
+  hudEl.classList.remove('open');
   const r = stickEl.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   for (const t of e.changedTouches) {
     if (stick.id === null && Math.hypot(t.clientX - cx, t.clientY - cy) < STICK + 24) {

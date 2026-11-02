@@ -84,6 +84,24 @@
   html.touch #hud:not(.open) :is(#pose, .row, #sunInfo, #liveRow, #paintRow, #fullRow, #measRow) { display: none; }
   html.touch #hud:not(.open) #lampRow { margin-top: 8px; }
   html.touch :is(#lampRow, #liveRow, #paintRow, #fullRow, #measRow) { padding: 4px 0; }
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    #start { padding: 8px; }
+    .card { max-width: 780px; padding: 14px 22px; }
+    .card h1 { margin-bottom: 8px; font-size: 22px; }
+    .card h2 { display: none; }
+    .card .intro { columns: 2; column-gap: 24px; text-align: left; }
+    .card .intro p { margin-bottom: 6px; font-size: 12.5px; line-height: 1.35; }
+    .card .go { margin-top: 2px; padding: 7px 26px; }
+    .card .keys { margin: 8px 0 0; font-size: 11.5px; line-height: 1.35; }
+    .card .stand { margin-top: 4px; }
+    html.touch #hud.open { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-auto-flow: row dense;
+      column-gap: 18px; width: min(580px, calc(100vw - 136px)); }
+    html.touch #hud.open #place { grid-column: 1 / -1; }
+    html.touch #hud.open :is(.row, #sunInfo) { grid-column: 1; }
+    html.touch #hud.open :is(#liveRow, #paintRow, #lampRow, #fullRow, #measRow) { grid-column: 2; margin-top: 0; }
+    html.touch #hud.open #paintRow { border-top: 0; }
+  }
 </style>
 <script>if (matchMedia('(pointer: coarse)').matches) document.documentElement.classList.add('touch');</script>
 <script type="importmap">
@@ -99,6 +117,7 @@
   <div class="card">
     <h1>Horus-Tempel von Edfu</h1>
     <h2>Vom Pylon bis zum Allerheiligsten</h2>
+    <div class="intro">
     <p>Rekonstruktion im ursprünglichen Zustand, erbaut von den Ptolemäern 237 bis 57&nbsp;v.&nbsp;Chr. Du stehst im Hof
        hinter dem 33&nbsp;m hohen Pylon. Nach Norden folgen Pronaos, Festsaal, Opfertischsaal und Mittlerer Saal, ganz hinten
        das Allerheiligste mit dem Granitschrein des Nektanebos II. und der Barke des Horus.</p>
@@ -107,6 +126,7 @@
        das Pylontor und die Türen in den hinteren Hofecken hinaus in den Umgang.</p>
     <p>Sonne, Mond und Sterne stehen so, wie sie gerade über Edfu stehen. Drinnen wird es dunkel – nimm die Öllampe mit<span class="keys-only"> (L)</span>.
        <span class="keys-only">Mit F</span><span class="touch-only">Im Menü oben links</span> wechselst du zwischen der ursprünglichen Bemalung und dem heutigen Stein.</p>
+    </div>
     <span class="go"><span id="goText">Lädt …</span><span class="load" id="loadBar"></span></span>
     <p class="keys keys-only">WASD / Pfeiltasten laufen · Maus umsehen · Shift rennen<br>
        Q / E Uhrzeit verschieben · N zurück zur aktuellen Zeit · F Originalfarben · L Öllampe · M Messwerte · Esc gibt die Maus frei</p>

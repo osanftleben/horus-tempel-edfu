@@ -48,11 +48,20 @@ const look = (dx, dy) => {
 const lockPointer = () => { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
 
 const touchMode = () => document.documentElement.classList.contains('touch');
+const fullToggle = document.getElementById('full');
+const setFull = on => {
+  if (on && !document.fullscreenElement) document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+  else if (!on && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+};
+fullToggle.addEventListener('change', () => setFull(fullToggle.checked));
+addEventListener('fullscreenchange', () => { fullToggle.checked = !!document.fullscreenElement; });
+if (!document.fullscreenEnabled) document.getElementById('fullRow').style.display = 'none';
 
 startEl.addEventListener('click', () => {
   if (!startEl.classList.contains('ready')) return;
   startEl.classList.add('hidden');
-  if (!touchMode()) lockPointer();
+  if (touchMode()) setFull(true);
+  else lockPointer();
 });
 canvas.addEventListener('click', () => { if (!touchMode() && document.pointerLockElement !== canvas) lockPointer(); });
 canvas.addEventListener('mousedown', () => { dragging = true; });

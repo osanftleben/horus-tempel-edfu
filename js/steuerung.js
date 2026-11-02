@@ -64,45 +64,53 @@ addEventListener('mousemove', e => {
 const STICK = 56;
 const stickEl = document.getElementById('stick'), knobEl = stickEl.firstElementChild;
 const stick = { id: null, x0: 0, y0: 0, f: 0, s: 0 }, swipe = { id: null, x: 0, y: 0 };
-canvas.addEventListener('pointerdown', e => {
-  if (e.pointerType !== 'touch') return;
+const onUI = e => e.target.closest?.('#hud, #start');
+addEventListener('touchstart', e => {
+  if (onUI(e)) return;
+  e.preventDefault();
   document.documentElement.classList.add('touch');
-  if (e.clientX < innerWidth / 2 && stick.id === null) {
-    Object.assign(stick, { id: e.pointerId, x0: e.clientX, y0: e.clientY, f: 0, s: 0 });
-    stickEl.style.left = `${e.clientX}px`;
-    stickEl.style.top = `${e.clientY}px`;
-    knobEl.style.transform = '';
-    stickEl.className = 'on';
-  } else if (swipe.id === null) Object.assign(swipe, { id: e.pointerId, x: e.clientX, y: e.clientY });
-  else return;
-  canvas.setPointerCapture(e.pointerId);
-});
-canvas.addEventListener('pointermove', e => {
-  if (e.pointerId === stick.id) {
-    let dx = e.clientX - stick.x0, dy = e.clientY - stick.y0;
-    const len = Math.hypot(dx, dy);
-    if (len > STICK) { dx *= STICK / len; dy *= STICK / len; }
-    stick.s = dx / STICK;
-    stick.f = -dy / STICK;
-    knobEl.style.transform = `translate(${dx}px, ${dy}px)`;
-    stickEl.className = len > STICK * 0.95 ? 'on run' : 'on';
-  } else if (e.pointerId === swipe.id) {
-    const k = 800 / Math.min(innerWidth, innerHeight);
-    look((e.clientX - swipe.x) * k, (e.clientY - swipe.y) * k);
-    swipe.x = e.clientX;
-    swipe.y = e.clientY;
+  for (const t of e.changedTouches) {
+    if (t.clientX < innerWidth / 2 && stick.id === null) {
+      Object.assign(stick, { id: t.identifier, x0: t.clientX, y0: t.clientY, f: 0, s: 0 });
+      stickEl.style.left = `${t.clientX}px`;
+      stickEl.style.top = `${t.clientY}px`;
+      knobEl.style.transform = '';
+      stickEl.className = 'on';
+    } else if (swipe.id === null) Object.assign(swipe, { id: t.identifier, x: t.clientX, y: t.clientY });
   }
-});
+}, { passive: false });
+addEventListener('touchmove', e => {
+  if (stick.id === null && swipe.id === null) return;
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.identifier === stick.id) {
+      let dx = t.clientX - stick.x0, dy = t.clientY - stick.y0;
+      const len = Math.hypot(dx, dy);
+      if (len > STICK) { dx *= STICK / len; dy *= STICK / len; }
+      stick.s = dx / STICK;
+      stick.f = -dy / STICK;
+      knobEl.style.transform = `translate(${dx}px, ${dy}px)`;
+      stickEl.className = len > STICK * 0.95 ? 'on run' : 'on';
+    } else if (t.identifier === swipe.id) {
+      const k = 800 / Math.min(innerWidth, innerHeight);
+      look((t.clientX - swipe.x) * k, (t.clientY - swipe.y) * k);
+      swipe.x = t.clientX;
+      swipe.y = t.clientY;
+    }
+  }
+}, { passive: false });
 const release = e => {
-  if (e.pointerId === stick.id) {
-    stick.id = null;
-    stick.f = stick.s = 0;
-    stickEl.className = stickEl.style.left = stickEl.style.top = knobEl.style.transform = '';
+  for (const t of e.changedTouches) {
+    if (t.identifier === stick.id) {
+      stick.id = null;
+      stick.f = stick.s = 0;
+      stickEl.className = stickEl.style.left = stickEl.style.top = knobEl.style.transform = '';
+    }
+    if (t.identifier === swipe.id) swipe.id = null;
   }
-  if (e.pointerId === swipe.id) swipe.id = null;
 };
-canvas.addEventListener('pointerup', release);
-canvas.addEventListener('pointercancel', release);
+addEventListener('touchend', release);
+addEventListener('touchcancel', release);
 
 const hudEl = document.getElementById('hud');
 document.getElementById('place').addEventListener('click', () => {

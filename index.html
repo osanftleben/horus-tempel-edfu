@@ -49,6 +49,7 @@
   #paintRow input, #lampRow input, #liveRow input, #fullRow input, #measRow input { width: auto; margin: 0; }
   #liveRow, #fullRow, #measRow { display: flex; align-items: center; gap: 8px; margin-top: 6px; cursor: pointer; }
   html:not(.messwerte) :is(#fps, #pose) { display: none; }
+  html:not(.touch) #fullRow { display: none; }
   #lampRow { display: flex; align-items: center; gap: 8px; margin-top: 6px; cursor: pointer; }
   #lampHint { color: #e8b060; font-size: 12px; display: none; }
   #lampHint.show { display: inline; }
@@ -75,8 +76,20 @@
   html.touch .touch-only { display: inline; }
   html.touch p.touch-only { display: block; }
   html.touch { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-  html.touch #hud { top: 12px; bottom: auto; left: 12px; width: min(300px, calc(100vw - 136px)); box-sizing: border-box; }
-  html.touch #hud .row { grid-template-columns: 62px 1fr 68px; }
+  html.touch #hud { top: 12px; bottom: auto; left: 12px; width: max-content; max-width: calc(100vw - 24px); box-sizing: border-box; }
+  html.touch #hud.open { width: calc(100vw - 24px); }
+  html.touch #fps { top: auto; bottom: 12px; right: 12px; }
+  html.touch #pose { display: none; }
+  html.touch #hud .row { grid-template-columns: 1fr auto; grid-template-areas: 'l v' 's s'; row-gap: 0; margin: 2px 0 4px; }
+  html.touch #hud .row label { grid-area: l; }
+  html.touch #hud .row span { grid-area: v; }
+  html.touch #hud .row input { grid-area: s; height: 30px; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; }
+  html.touch #hud .row input::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: rgba(232,196,128,.35); }
+  html.touch #hud .row input::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px;
+    border-radius: 50%; background: #e0b866; border: 2px solid #2a1c0c; }
+  html.touch #hud .row input::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(232,196,128,.35); }
+  html.touch #hud .row input::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #e0b866; border: 2px solid #2a1c0c; }
+  html.touch #hud input[type=checkbox] { width: 18px; height: 18px; }
   html.touch #place { cursor: pointer; margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
   html.touch #place::after { content: ' ▾'; color: #b9a585; }
   html.touch #hud.open #place { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(232,196,128,.18); }
@@ -95,11 +108,12 @@
     .card .go { margin-top: 2px; padding: 7px 26px; }
     .card .keys { margin: 8px 0 0; font-size: 11.5px; line-height: 1.35; }
     .card .stand { margin-top: 4px; }
-    html.touch #hud.open { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-auto-flow: row dense;
-      column-gap: 18px; width: min(580px, calc(100vw - 136px)); }
+    html.touch #hud.open { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; column-gap: 24px; }
     html.touch #hud.open #place { grid-column: 1 / -1; }
-    html.touch #hud.open :is(.row, #sunInfo) { grid-column: 1; }
-    html.touch #hud.open :is(#liveRow, #paintRow, #lampRow, #fullRow, #measRow) { grid-column: 2; margin-top: 0; }
+    html.touch #hud.open .row { margin: 0 0 2px; }
+    html.touch #hud.open .row input { height: 26px; }
+    html.touch #hud.open #sunInfo { margin: 0 0 4px; }
+    html.touch #hud.open :is(#liveRow, #paintRow, #lampRow, #fullRow, #measRow) { margin-top: 0; padding: 1px 0; }
     html.touch #hud.open #paintRow { border-top: 0; }
   }
 </style>
@@ -141,15 +155,19 @@
 
 <div id="hud">
   <div id="place"><span id="placeName">–</span><div id="pose"></div></div>
-  <div class="row"><label for="hour">Uhrzeit</label><input id="hour" type="range" min="0" max="24" step="0.05" value="10.5"><span id="hourOut"></span></div>
-  <div class="row"><label for="day">Datum</label><input id="day" type="range" min="1" max="365" step="1" value="304"><span id="dayOut"></span></div>
-  <div class="row"><label for="qual">Qualität</label><input id="qual" type="range" min="0" max="4" step="1"><span id="qualOut"></span></div>
-  <div id="sunInfo"></div>
-  <label id="liveRow"><input id="live" type="checkbox" checked> Aktuelle Zeit <kbd>N</kbd></label>
-  <label id="paintRow"><input id="paint" type="checkbox" checked> Originalbemalung <kbd>F</kbd></label>
-  <label id="lampRow"><input id="lamp" type="checkbox"> Öllampe <kbd>L</kbd> <span id="lampHint">– zu dunkel? Anzünden!</span></label>
-  <label id="fullRow"><input id="full" type="checkbox"> Vollbild</label>
-  <label id="measRow"><input id="meas" type="checkbox"> Messwerte <kbd>M</kbd></label>
+  <div id="regler">
+    <div class="row"><label for="hour">Uhrzeit</label><input id="hour" type="range" min="0" max="24" step="0.05" value="10.5"><span id="hourOut"></span></div>
+    <div class="row"><label for="day">Datum</label><input id="day" type="range" min="1" max="365" step="1" value="304"><span id="dayOut"></span></div>
+    <div class="row"><label for="qual">Qualität</label><input id="qual" type="range" min="0" max="4" step="1"><span id="qualOut"></span></div>
+  </div>
+  <div id="schalter">
+    <div id="sunInfo"></div>
+    <label id="liveRow"><input id="live" type="checkbox" checked> Aktuelle Zeit <kbd>N</kbd></label>
+    <label id="paintRow"><input id="paint" type="checkbox" checked> Originalbemalung <kbd>F</kbd></label>
+    <label id="lampRow"><input id="lamp" type="checkbox"> Öllampe <kbd>L</kbd> <span id="lampHint">– zu dunkel? Anzünden!</span></label>
+    <label id="fullRow"><input id="full" type="checkbox"> Vollbild</label>
+    <label id="measRow"><input id="meas" type="checkbox"> Messwerte <kbd>M</kbd></label>
+  </div>
 </div>
 
 <div id="stick"><div></div></div>

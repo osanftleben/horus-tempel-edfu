@@ -39,12 +39,14 @@ function cullTo(zone) {
 }
 
 const buf = new THREE.Vector2();
+const COARSE = matchMedia('(pointer: coarse)').matches;
+let resScale = 1, slowSpans = 0;
 function resize() {
   const w = Math.max(1, innerWidth), h = Math.max(1, innerHeight);
   camera.aspect = w / h;
   camera.fov = Math.min(65, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(deg(85) / 2) / camera.aspect)));
   camera.updateProjectionMatrix();
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1) * resScale);
   renderer.setSize(w, h);
   setComposerSize(w, h);
   stars.uniforms.uPix.value = renderer.getPixelRatio();
@@ -61,8 +63,17 @@ resize();
 const clock = new THREE.Clock();
 let bounceDue = false, lastBounce = -1e9;
 
-const fpsEl = document.getElementById('fps');
+const fpsEl = document.getElementById('fps'), startEl = document.getElementById('start');
 let fpsFrames = 0, fpsSince = performance.now();
+function adaptResolution(fps) {
+  if (!COARSE || resScale <= 0.6 || !startEl.classList.contains('hidden')) return;
+  slowSpans = fps < 25 ? slowSpans + 1 : 0;
+  if (slowSpans < 6) return;
+  resScale = resScale > 0.8 ? 0.75 : 0.6;
+  slowSpans = 0;
+  resize();
+  resetHistory();
+}
 function updateFps() {
   fpsFrames++;
   const now = performance.now(), span = now - fpsSince;
@@ -70,6 +81,7 @@ function updateFps() {
     const fps = fpsFrames * 1000 / span;
     fpsEl.innerHTML = `${fps.toFixed(0)} FPS<br><small>${(span / fpsFrames).toFixed(1)} ms/Bild</small>`;
     fpsEl.style.color = fps >= 50 ? '#f0cf8a' : fps >= 30 ? '#e8a060' : '#e06050';
+    adaptResolution(fps);
     fpsFrames = 0;
     fpsSince = now;
   }
@@ -163,6 +175,7 @@ window.temple = { THREE, scene, camera, renderer, sunDir, moonDir, trueSun, stat
   M, ROOMS, STEPS, isFree, floorAt, roomAt, compileTimes,
   get level() { return curLevel; }, set level(l) { setLevel(l); },
   get cull() { return cullOn; }, set cull(on) { cullOn = on; },
+  get resScale() { return resScale; }, set resScale(s) { resScale = s; resize(); resetHistory(); },
   setView(...a) { setView(...a); resetHistory(); },
   eye: { EYE_KEY, eyeState },
   passes: { renderAO, AO, taaPass, composer, depthRT, depthOnly, lightDepthRT, lightCam, renderVolumetric, measureBounce },

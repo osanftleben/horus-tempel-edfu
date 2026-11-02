@@ -54,7 +54,30 @@
     color: #f0cf8a; text-align: right; z-index: 1; font-variant-numeric: tabular-nums; }
   #fps small { color: #b9a585; font-size: 11px; }
   #err { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+
+  #stick { position: fixed; left: 0; top: 0; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%;
+    border: 1px solid rgba(232,196,128,.45); background: rgba(12,8,4,.25); pointer-events: none; display: none; z-index: 1; }
+  #stick.on { display: block; }
+  #stick div { position: absolute; left: 32px; top: 32px; width: 48px; height: 48px; border-radius: 50%;
+    background: rgba(232,196,128,.5); }
+  #stick.run div { background: rgba(240,207,138,.85); }
+
+  .touch-only, html.touch .keys-only, html.touch #help, html.touch kbd { display: none; }
+  html.touch .touch-only { display: inline; }
+  html.touch p.touch-only { display: block; }
+  html.touch { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  html.touch canvas { touch-action: none; }
+  html.touch #hud { top: 12px; bottom: auto; left: 12px; width: min(300px, calc(100vw - 136px)); box-sizing: border-box; }
+  html.touch #hud .row { grid-template-columns: 62px 1fr 68px; }
+  html.touch #place { cursor: pointer; margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+  html.touch #place::after { content: ' ▾'; color: #b9a585; }
+  html.touch #hud.open #place { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(232,196,128,.18); }
+  html.touch #hud.open #place::after { content: ' ▴'; }
+  html.touch #hud:not(.open) :is(#pose, .row, #sunInfo, #liveRow, #paintRow) { display: none; }
+  html.touch #hud:not(.open) #lampRow { margin-top: 8px; }
+  html.touch #lampRow, html.touch #liveRow, html.touch #paintRow { padding: 4px 0; }
 </style>
+<script>if (matchMedia('(pointer: coarse)').matches) document.documentElement.classList.add('touch');</script>
 <script type="importmap">
 { "imports": {
     "three": "./lib/three/build/three.module.js",
@@ -74,11 +97,13 @@
     <p>Unterwegs: im Pronaos das Haus des Morgens und die Bibliothek, am Festsaal Laboratorium, Schatzkammer und Nilkammer,
        rund um das Allerheiligste der Korridor der Mysterien mit zehn Kapellen. Die Osttreppe im Opfertischsaal führt aufs Dach,
        das Pylontor und die Türen in den hinteren Hofecken hinaus in den Umgang.</p>
-    <p>Sonne, Mond und Sterne stehen so, wie sie gerade über Edfu stehen. Drinnen wird es dunkel – nimm die Öllampe mit (L).
-       Mit F wechselst du zwischen der ursprünglichen Bemalung und dem heutigen Stein.</p>
+    <p>Sonne, Mond und Sterne stehen so, wie sie gerade über Edfu stehen. Drinnen wird es dunkel – nimm die Öllampe mit<span class="keys-only"> (L)</span>.
+       <span class="keys-only">Mit F</span><span class="touch-only">Im Menü oben links</span> wechselst du zwischen der ursprünglichen Bemalung und dem heutigen Stein.</p>
     <span class="go"><span id="goText">Lädt …</span><span class="load" id="loadBar"></span></span>
-    <p class="keys">WASD / Pfeiltasten laufen · Maus umsehen · Shift rennen<br>
+    <p class="keys keys-only">WASD / Pfeiltasten laufen · Maus umsehen · Shift rennen<br>
        Q / E Uhrzeit verschieben · N zurück zur aktuellen Zeit · F Originalfarben · L Öllampe · Esc gibt die Maus frei</p>
+    <p class="keys touch-only">Links auf den Boden tippen und ziehen: laufen, ganz ausziehen: rennen<br>
+       Rechts wischen: umsehen · Menü oben links: Uhrzeit, Farben, Öllampe</p>
   </div>
 </div>
 
@@ -95,6 +120,8 @@
   <label id="paintRow"><input id="paint" type="checkbox" checked> Originalbemalung <kbd>F</kbd></label>
   <label id="lampRow"><input id="lamp" type="checkbox"> Öllampe <kbd>L</kbd> <span id="lampHint">– zu dunkel? Anzünden!</span></label>
 </div>
+
+<div id="stick"><div></div></div>
 
 <div id="err">WebGL 2 wird von diesem Browser nicht unterstützt.</div>
 

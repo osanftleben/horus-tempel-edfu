@@ -47,16 +47,61 @@ const look = (dx, dy) => {
 };
 const lockPointer = () => { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
 
+const touchMode = () => document.documentElement.classList.contains('touch');
+
 startEl.addEventListener('click', () => {
   if (!startEl.classList.contains('ready')) return;
   startEl.classList.add('hidden');
-  lockPointer();
+  if (!touchMode()) lockPointer();
 });
-canvas.addEventListener('click', () => { if (document.pointerLockElement !== canvas) lockPointer(); });
+canvas.addEventListener('click', () => { if (!touchMode() && document.pointerLockElement !== canvas) lockPointer(); });
 canvas.addEventListener('mousedown', () => { dragging = true; });
 addEventListener('mouseup', () => { dragging = false; });
 addEventListener('mousemove', e => {
   if (document.pointerLockElement === canvas || dragging) look(e.movementX, e.movementY);
+});
+
+const STICK = 56;
+const stickEl = document.getElementById('stick'), knobEl = stickEl.firstElementChild;
+const stick = { id: null, x0: 0, y0: 0, f: 0, s: 0 }, swipe = { id: null, x: 0, y: 0 };
+canvas.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'touch') return;
+  document.documentElement.classList.add('touch');
+  if (e.clientX < innerWidth / 2 && stick.id === null) {
+    Object.assign(stick, { id: e.pointerId, x0: e.clientX, y0: e.clientY, f: 0, s: 0 });
+    stickEl.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+    knobEl.style.transform = '';
+    stickEl.className = 'on';
+  } else if (swipe.id === null) Object.assign(swipe, { id: e.pointerId, x: e.clientX, y: e.clientY });
+  else return;
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  if (e.pointerId === stick.id) {
+    let dx = e.clientX - stick.x0, dy = e.clientY - stick.y0;
+    const len = Math.hypot(dx, dy);
+    if (len > STICK) { dx *= STICK / len; dy *= STICK / len; }
+    stick.s = dx / STICK;
+    stick.f = -dy / STICK;
+    knobEl.style.transform = `translate(${dx}px, ${dy}px)`;
+    stickEl.className = len > STICK * 0.95 ? 'on run' : 'on';
+  } else if (e.pointerId === swipe.id) {
+    const k = 800 / Math.min(innerWidth, innerHeight);
+    look((e.clientX - swipe.x) * k, (e.clientY - swipe.y) * k);
+    swipe.x = e.clientX;
+    swipe.y = e.clientY;
+  }
+});
+const release = e => {
+  if (e.pointerId === stick.id) { stick.id = null; stick.f = stick.s = 0; stickEl.className = ''; }
+  if (e.pointerId === swipe.id) swipe.id = null;
+};
+canvas.addEventListener('pointerup', release);
+canvas.addEventListener('pointercancel', release);
+
+const hudEl = document.getElementById('hud');
+document.getElementById('place').addEventListener('click', () => {
+  if (touchMode()) hudEl.classList.toggle('open');
 });
 
 const colliders = [
@@ -122,12 +167,19 @@ function setView(x, z, yawDeg, pitchDeg = 0, level = 0, y = 0) {
 }
 
 function updateControls(dt) {
-  let speed = (keys.ShiftLeft || keys.ShiftRight ? 3.0 : 1.4) * dt;
+  let gait = keys.ShiftLeft || keys.ShiftRight ? 3.0 : 1.4;
   let f = 0, s = 0;
   if (keys.KeyW || keys.ArrowUp) f += 1;
   if (keys.KeyS || keys.ArrowDown) f -= 1;
   if (keys.KeyD || keys.ArrowRight) s += 1;
   if (keys.KeyA || keys.ArrowLeft) s -= 1;
+  const push = Math.hypot(stick.f, stick.s);
+  if (!f && !s && push > 0.15) {
+    f = stick.f;
+    s = stick.s;
+    gait = push > 0.95 ? 3.0 : 1.4 * Math.min(1, push / 0.8);
+  }
+  let speed = gait * dt;
   if (f || s) {
     const len = Math.hypot(f, s);
     const ux = (-Math.sin(yaw) * f + Math.cos(yaw) * s) / len, uz = (-Math.cos(yaw) * f - Math.sin(yaw) * s) / len;

@@ -63,8 +63,21 @@ const setFull = on => {
   else if (!on && document.fullscreenElement) document.exitFullscreen().catch(() => {});
 };
 fullToggle.addEventListener('change', () => setFull(fullToggle.checked));
-addEventListener('fullscreenchange', () => { fullToggle.checked = !!document.fullscreenElement; });
+const landToggle = document.getElementById('land');
+const setLand = async on => {
+  try {
+    if (!on) return screen.orientation.unlock();
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    await screen.orientation.lock('landscape');
+  } catch (e) { landToggle.checked = false; }
+};
+landToggle.addEventListener('change', () => setLand(landToggle.checked));
+addEventListener('fullscreenchange', () => {
+  fullToggle.checked = !!document.fullscreenElement;
+  if (!document.fullscreenElement) landToggle.checked = false;
+});
 if (!document.fullscreenEnabled) document.getElementById('fullRow').style.display = 'none';
+if (!document.fullscreenEnabled || !screen.orientation?.lock) document.getElementById('landRow').style.display = 'none';
 
 startEl.addEventListener('click', () => {
   if (!startEl.classList.contains('ready')) return;

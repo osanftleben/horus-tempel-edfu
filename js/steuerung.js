@@ -17,6 +17,7 @@ import { brazierPos, standLightAt, standPos } from './lampen.js';
 import { deg, hourIn, lastLive, live, setLive, state, syncNow, updateSun } from './himmel.js';
 import { resetHistory } from './glaettung.js';
 import { ANSICHTEN, GRUPPEN } from './ansichten.js';
+import { RAUMTEXTE } from './raumtexte.js';
 
 const keys = {};
 const paintToggle = document.getElementById('paint');
@@ -32,6 +33,14 @@ const showMeas = on => {
 };
 measToggle.addEventListener('change', () => showMeas(measToggle.checked));
 try { showMeas(localStorage.getItem('edfu-messwerte') === '1'); } catch (e) {}
+const textToggle = document.getElementById('texts');
+const showTexts = on => {
+  textToggle.checked = on;
+  document.documentElement.classList.toggle('raumtexte', on);
+  try { localStorage.setItem('edfu-raumtexte', on ? '' : '0'); } catch (e) {}
+};
+textToggle.addEventListener('change', () => showTexts(textToggle.checked));
+try { showTexts(localStorage.getItem('edfu-raumtexte') !== '0'); } catch (e) { showTexts(true); }
 addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'KeyF' && !e.repeat) {
@@ -276,7 +285,7 @@ function updateControls(dt) {
   camera.rotation.set(pitch, yaw, 0);
 }
 
-const placeEl = document.getElementById('placeName'), poseEl = document.getElementById('pose');
+const placeEl = document.getElementById('placeName'), poseEl = document.getElementById('pose'), raumEl = document.getElementById('raumtext');
 let lastPlace = '', lastPose = '';
 const lampHint = document.getElementById('lampHint');
 const EYE_KEY = { ref: 0.156, k: 0.5, highRef: 0.46, highK: 0.8, down: 0.6, up: 2.0 };
@@ -302,7 +311,11 @@ function updateEye(dt) {
   const targetExp = zoneExp * imgExp;
   renderer.toneMappingExposure += (targetExp - renderer.toneMappingExposure) * Math.min(1, dt * 0.8);
   const name = roomAt(p.x, p.z)?.name ?? '';
-  if (name !== lastPlace) { placeEl.textContent = name; lastPlace = name; }
+  if (name !== lastPlace) {
+    placeEl.textContent = name;
+    lastPlace = name;
+    if (RAUMTEXTE[name]) raumEl.textContent = RAUMTEXTE[name];
+  }
   const r = THREE.MathUtils.radToDeg, look = ((r(yaw) % 360) + 540) % 360 - 180;
   const pose = `x ${p.x.toFixed(2)}  z ${p.z.toFixed(2)}  y ${p.y.toFixed(2)}\nBlick ${look.toFixed(0)}°  Neigung ${r(pitch).toFixed(0)}°  Ebene ${curLevel}`;
   if (pose !== lastPose) { poseEl.textContent = pose; lastPose = pose; }

@@ -41,6 +41,14 @@ const showTexts = on => {
 };
 textToggle.addEventListener('change', () => showTexts(textToggle.checked));
 try { showTexts(localStorage.getItem('edfu-raumtexte') !== '0'); } catch (e) { showTexts(true); }
+const planToggle = document.getElementById('planOn');
+const showPlan = on => {
+  planToggle.checked = on;
+  document.documentElement.classList.toggle('grundriss', on);
+  try { localStorage.setItem('edfu-grundriss', on ? '' : '0'); } catch (e) {}
+};
+planToggle.addEventListener('change', () => showPlan(planToggle.checked));
+try { showPlan(localStorage.getItem('edfu-grundriss') !== '0'); } catch (e) { showPlan(true); }
 addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'KeyF' && !e.repeat) {
@@ -53,6 +61,7 @@ addEventListener('keydown', e => {
   }
   if (e.code === 'KeyN' && !e.repeat) setLive(!live);
   if (e.code === 'KeyM' && !e.repeat) showMeas(!measToggle.checked);
+  if (e.code === 'KeyK' && !e.repeat) showPlan(!planToggle.checked);
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
@@ -192,6 +201,7 @@ function stackedAt(x, z) {
 }
 const reachable = (x, z) => { const y = stackedAt(x, z); return y !== null && Math.abs(y - footY) < 0.6; };
 const inBand = r => !r.band || (footY > r.band[0] && footY < r.band[1]);
+const onFloor = r => onLevel(r) && inBand(r);
 function isFree(x, z) {
   if (!ROOMS.some(r => onLevel(r) && inBand(r) && inRect(r, x, z, R) && (!r.stacked || reachable(x, z)))) return false;
   for (const [cx, cz, cr, lv = 0] of colliders) {
@@ -321,4 +331,4 @@ function updateEye(dt) {
   if (pose !== lastPose) { poseEl.textContent = pose; lastPose = pose; }
 }
 
-export { EYE_KEY, curLevel, eyeState, floorAt, isFree, paintTarget, roomAt, setLevel, setView, updateControls, updateEye };
+export { EYE_KEY, curLevel, eyeState, floorAt, isFree, onFloor, paintTarget, roomAt, setLevel, setView, updateControls, updateEye };

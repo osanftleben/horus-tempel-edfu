@@ -10,6 +10,7 @@ import { endFrame, jitterCamera, resetHistory, setBeams, taaPass } from './glaet
 import { updateStandLamps } from './lampen.js';
 import { AO, renderAO, setAOSize } from './verdeckung.js';
 import { measureKey } from './belichtung.js';
+import { updatePlan } from './grundriss.js';
 import { EYE_KEY, curLevel, eyeState, floorAt, isFree, paintTarget, roomAt, setLevel, setView, updateControls, updateEye } from './steuerung.js';
 
 const SEALED = ZONES.filter(z => z.portals).map(zone => ({ zone,
@@ -99,6 +100,7 @@ function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
   updateControls(dt);
   updateEye(dt);
+  updatePlan();
   updateLamp(dt, clock.elapsedTime);
   updateStandLamps(dt, clock.elapsedTime);
   dustMat.uniforms.uTime.value = clock.elapsedTime;

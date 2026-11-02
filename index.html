@@ -58,11 +58,14 @@
   #pose { margin-top: 3px; font: 11px/1.3 ui-monospace, Consolas, monospace; color: #b9a585; white-space: pre; }
   #paintRow { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 8px;
     border-top: 1px solid rgba(232,196,128,.18); cursor: pointer; }
-  #paintRow input, #lampRow input, #liveRow input, #fullRow input, #landRow input, #textRow input, #measRow input { width: auto; margin: 0; }
-  #liveRow, #fullRow, #landRow, #textRow, #measRow { display: flex; align-items: center; gap: 8px; margin-top: 6px; cursor: pointer; }
+  #paintRow input, #lampRow input, #liveRow input, #fullRow input, #landRow input, #planRow input, #textRow input, #measRow input { width: auto; margin: 0; }
+  #liveRow, #fullRow, #landRow, #planRow, #textRow, #measRow { display: flex; align-items: center; gap: 8px; margin-top: 6px; cursor: pointer; }
   html:not(.messwerte) :is(#fps, #pose) { display: none; }
   #raumtext { margin-top: 5px; font-size: 12px; line-height: 1.4; color: #d9c29a; }
   html:not(.raumtexte) #raumtext, #raumtext:empty { display: none; }
+  #plan { position: fixed; right: 16px; bottom: 16px; height: min(360px, 55vh); aspect-ratio: 66 / 140; opacity: .8;
+    border: 1px solid rgba(232,196,128,.25); border-radius: 5px; pointer-events: none; display: none; }
+  html.grundriss #plan { display: block; }
   html:not(.touch) :is(#fullRow, #landRow) { display: none; }
   #lampRow { display: flex; align-items: center; gap: 8px; margin-top: 6px; cursor: pointer; }
   #lampHint { color: #e8b060; font-size: 12px; display: none; }
@@ -112,9 +115,12 @@
   html.touch #placeName::after { content: ' ▾'; color: #b9a585; }
   html.touch #hud.open #place { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(232,196,128,.18); }
   html.touch #hud.open #placeName::after { content: ' ▴'; }
-  html.touch #hud:not(.open) :is(#pose, #raumtext, .row, #gotoRow, #sunInfo, #liveRow, #paintRow, #fullRow, #landRow, #textRow, #measRow) { display: none; }
+  html.touch #hud:not(.open) :is(#pose, #raumtext, .row, #gotoRow, #sunInfo, #liveRow, #paintRow, #fullRow, #landRow, #planRow, #textRow, #measRow) { display: none; }
   html.touch #hud:not(.open) #lampRow { margin-top: 8px; }
-  html.touch :is(#lampRow, #liveRow, #paintRow, #fullRow, #landRow, #textRow, #measRow) { padding: 4px 0; }
+  html.touch :is(#lampRow, #liveRow, #paintRow, #fullRow, #landRow, #planRow, #textRow, #measRow) { padding: 4px 0; }
+  html.touch #plan { top: 12px; right: 12px; bottom: auto; height: min(220px, 40vh); }
+  html.touch #hud.open ~ #plan { display: none; }
+  html.touch.grundriss #hud:not(.open) { max-width: calc(100vw - 144px); }
 
   @media (orientation: landscape) and (max-height: 500px) {
     #start { padding: 8px; }
@@ -136,7 +142,7 @@
     html.touch #hud.goto #gotoList { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; grid-column: 1 / -1; max-height: calc(100vh - 90px); }
     html.touch #hud.goto #gotoList div { grid-column: 1 / -1; }
     html.touch #hud.open #gotoList button { padding: 6px; }
-    html.touch #hud.open :is(#liveRow, #paintRow, #lampRow, #fullRow, #landRow, #textRow, #measRow) { margin-top: 0; padding: 1px 0; }
+    html.touch #hud.open :is(#liveRow, #paintRow, #lampRow, #fullRow, #landRow, #planRow, #textRow, #measRow) { margin-top: 0; padding: 1px 0; }
     html.touch #hud.open #paintRow { border-top: 0; }
   }
 </style>
@@ -166,7 +172,7 @@
     </div>
     <span class="go"><span id="goText">Lädt …</span><span class="load" id="loadBar"></span></span>
     <p class="keys keys-only">WASD / Pfeiltasten laufen · Maus umsehen · Shift rennen<br>
-       Q / E Uhrzeit verschieben · N zurück zur aktuellen Zeit · F Originalfarben · L Öllampe · M Messwerte · Esc gibt die Maus frei</p>
+       Q / E Uhrzeit verschieben · N zurück zur aktuellen Zeit · F Originalfarben · L Öllampe · K Grundriss · M Messwerte · Esc gibt die Maus frei</p>
     <p class="keys touch-only">Kreis unten links: nach vorn/hinten laufen, zur Seite drehen, ganz nach vorn rennen<br>
        Sonst überall wischen: umsehen · Menü oben links: Uhrzeit, Farben, Öllampe</p>
     <p class="stand" id="stand"></p>
@@ -174,7 +180,7 @@
 </div>
 
 <div id="fps">– FPS</div>
-<div id="help">WASD laufen · Maus umsehen · Shift rennen · Q/E Uhrzeit · N jetzt · F Farben · L Öllampe · Esc Maus frei</div>
+<div id="help">WASD laufen · Maus umsehen · Shift rennen · Q/E Uhrzeit · N jetzt · F Farben · L Öllampe · K Plan · Esc Maus frei</div>
 
 <div id="hud">
   <div id="place"><span id="placeName">–</span><div id="pose"></div><div id="raumtext"></div></div>
@@ -192,12 +198,14 @@
     <label id="lampRow"><input id="lamp" type="checkbox"> Öllampe <kbd>L</kbd> <span id="lampHint">– zu dunkel? Anzünden!</span></label>
     <label id="fullRow"><input id="full" type="checkbox"> Vollbild</label>
     <label id="landRow"><input id="land" type="checkbox"> Querformat</label>
+    <label id="planRow"><input id="planOn" type="checkbox" checked> Grundriss <kbd>K</kbd></label>
     <label id="textRow"><input id="texts" type="checkbox" checked> Raumtexte</label>
     <label id="measRow"><input id="meas" type="checkbox"> Messwerte <kbd>M</kbd></label>
   </div>
 </div>
 
 <div id="stick"><div></div></div>
+<canvas id="plan"></canvas>
 
 <div id="err">WebGL 2 wird von diesem Browser nicht unterstützt.</div>
 

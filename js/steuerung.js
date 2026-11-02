@@ -235,17 +235,6 @@ function updateControls(dt) {
 
 const placeEl = document.getElementById('placeName'), poseEl = document.getElementById('pose');
 let lastPlace = '', lastPose = '';
-const brightIn = document.getElementById('bright'), brightOut = document.getElementById('brightOut');
-let brightness = 1;
-try { brightness = +(localStorage.getItem('edfu-brightness') || 1); } catch (e) {}
-if (!(brightness >= 0.5 && brightness <= 2.5)) brightness = 1;
-const showBright = () => { brightIn.value = brightness; brightOut.textContent = `${Math.round(brightness * 100)} %`; };
-brightIn.addEventListener('input', () => {
-  brightness = +brightIn.value;
-  showBright();
-  try { localStorage.setItem('edfu-brightness', brightness); } catch (e) {}
-});
-showBright();
 const lampHint = document.getElementById('lampHint');
 const EYE_KEY = { ref: 0.156, k: 0.5, highRef: 0.46, highK: 0.8, down: 0.6, up: 2.0 };
 const eyeState = {};
@@ -256,9 +245,9 @@ function updateEye(dt) {
   const around = zoneLight(p.x, p.y, p.z) * (base + (1 - base) * sky) + standLightAt(p);
   const light = around + 0.12 * lampLevel;
   const maxExp = 2.6 + 3.4 * (1 - state.daylight);
-  const eyeExp = l => brightness * THREE.MathUtils.clamp(1.05 * Math.pow(l, -0.38), 1.0, maxExp);
+  const eyeExp = l => THREE.MathUtils.clamp(1.05 * Math.pow(l, -0.38), 1.0, maxExp);
   lampHint.classList.toggle('show', !lampOn && around * eyeExp(around) < 0.2);
-  const zoneExp = eyeExp(light) / brightness, key = imageKey(), high = imageHigh();
+  const zoneExp = eyeExp(light), key = imageKey(), high = imageHigh();
   let imgExp = 1;
   if (key > 0) {
     const open = OPEN_ZONES.includes(zoneAtPoint(p.x, p.y, p.z)) ? Math.max(state.daylight, state.dusk) : 0;
@@ -267,7 +256,7 @@ function updateEye(dt) {
     1 - (1 - EYE_KEY.down) * state.daylight, 1 + (EYE_KEY.up - 1) * open);
   }
   Object.assign(eyeState, { key, high, zoneExp, imgExp });
-  const targetExp = zoneExp * brightness * imgExp;
+  const targetExp = zoneExp * imgExp;
   renderer.toneMappingExposure += (targetExp - renderer.toneMappingExposure) * Math.min(1, dt * 0.8);
   const name = roomAt(p.x, p.z)?.name ?? '';
   if (name !== lastPlace) { placeEl.textContent = name; lastPlace = name; }

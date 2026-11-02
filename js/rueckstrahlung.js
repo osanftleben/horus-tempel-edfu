@@ -70,4 +70,4 @@ function setComposerSize(w, h) {
   bloom.setSize(Math.max(1, Math.round(w * pr / 2)), Math.max(1, Math.round(h * pr / 2)));
 }
 
-export { composer, measureBounce, setComposerSize };
+export { bloom, composer, measureBounce, setComposerSize };

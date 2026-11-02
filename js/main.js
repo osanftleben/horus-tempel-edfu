@@ -5,7 +5,7 @@ import { paintUniform } from './material.js';
 import { depthOnly, depthRT, dustMat, lightCam, lightDepthRT, sun, updateLamp } from './licht.js';
 import { blurRT, renderVolumetric, volMat, volRT } from './strahlen.js';
 import { dayIn, deg, hourIn, moonDir, setLive, stars, state, sunDir, sunDirty, sunUpdated, trueSun, updateSun } from './himmel.js';
-import { composer, measureBounce, setComposerSize } from './rueckstrahlung.js';
+import { bloom, composer, measureBounce, setComposerSize } from './rueckstrahlung.js';
 import { endFrame, jitterCamera, resetHistory, setBeams, taaPass } from './glaettung.js';
 import { updateStandLamps } from './lampen.js';
 import { AO, renderAO, setAOSize } from './verdeckung.js';
@@ -39,14 +39,31 @@ function cullTo(zone) {
 }
 
 const buf = new THREE.Vector2();
-const COARSE = matchMedia('(pointer: coarse)').matches;
-let resScale = 1, slowSpans = 0;
+const DPR = Math.round(devicePixelRatio * 100) / 100;
+const STUFEN = [...new Set([0.5, 0.75, 1, 1.5, 2, 3].map(pr => Math.min(pr, DPR)))];
+const qualIn = document.getElementById('qual'), qualOut = document.getElementById('qualOut');
+let stufe = STUFEN.length - 1;
+try { const s = localStorage.getItem('edfu-qualitaet'); if (s !== null && STUFEN[+s]) stufe = +s; } catch (e) {}
+qualIn.max = STUFEN.length - 1;
+const showStufe = () => {
+  qualIn.value = stufe;
+  qualOut.textContent = `${stufe + 1} von ${STUFEN.length}`;
+  bloom.enabled = stufe >= 2;
+};
+qualIn.addEventListener('input', () => {
+  stufe = +qualIn.value;
+  showStufe();
+  resize();
+  resetHistory();
+  try { localStorage.setItem('edfu-qualitaet', stufe); } catch (e) {}
+});
+showStufe();
 function resize() {
   const w = Math.max(1, innerWidth), h = Math.max(1, innerHeight);
   camera.aspect = w / h;
   camera.fov = Math.min(65, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(deg(85) / 2) / camera.aspect)));
   camera.updateProjectionMatrix();
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1) * resScale);
+  renderer.setPixelRatio(STUFEN[stufe]);
   renderer.setSize(w, h);
   setComposerSize(w, h);
   stars.uniforms.uPix.value = renderer.getPixelRatio();
@@ -63,17 +80,8 @@ resize();
 const clock = new THREE.Clock();
 let bounceDue = false, lastBounce = -1e9;
 
-const fpsEl = document.getElementById('fps'), startEl = document.getElementById('start');
+const fpsEl = document.getElementById('fps');
 let fpsFrames = 0, fpsSince = performance.now();
-function adaptResolution(fps) {
-  if (!COARSE || resScale <= 0.6 || !startEl.classList.contains('hidden')) return;
-  slowSpans = fps < 25 ? slowSpans + 1 : 0;
-  if (slowSpans < 6) return;
-  resScale = resScale > 0.8 ? 0.75 : 0.6;
-  slowSpans = 0;
-  resize();
-  resetHistory();
-}
 function updateFps() {
   fpsFrames++;
   const now = performance.now(), span = now - fpsSince;
@@ -81,7 +89,6 @@ function updateFps() {
     const fps = fpsFrames * 1000 / span;
     fpsEl.innerHTML = `${fps.toFixed(0)} FPS<br><small>${(span / fpsFrames).toFixed(1)} ms/Bild</small>`;
     fpsEl.style.color = fps >= 50 ? '#f0cf8a' : fps >= 30 ? '#e8a060' : '#e06050';
-    adaptResolution(fps);
     fpsFrames = 0;
     fpsSince = now;
   }
@@ -124,7 +131,7 @@ function frame() {
     bounceUniform.value[i] += (bounceTarget[i] - bounceUniform.value[i]) * Math.min(1, dt * 2);
   }
   const beams = volMat.uniforms.uSunColor.value;
-  const beamsOn = Math.max(beams.r, beams.g, beams.b) > 1e-3 && !sealed;
+  const beamsOn = Math.max(beams.r, beams.g, beams.b) > 1e-3 && !sealed && stufe >= 2;
   setBeams(beamsOn);
   if (beamsOn) renderVolumetric();
   renderer.setRenderTarget(null);
@@ -174,9 +181,7 @@ function start() {
 window.temple = { THREE, scene, camera, renderer, sunDir, moonDir, trueSun, state, updateSun, bounce: bounceUniform.value, ZONES,
   M, ROOMS, STEPS, isFree, floorAt, roomAt, compileTimes,
   get level() { return curLevel; }, set level(l) { setLevel(l); },
-  get cull() { return cullOn; }, set cull(on) { cullOn = on; },
-  get resScale() { return resScale; }, set resScale(s) { resScale = s; resize(); resetHistory(); },
-  setView(...a) { setView(...a); resetHistory(); },
+  get cull() { return cullOn; }, set cull(on) { cullOn = on; },  setView(...a) { setView(...a); resetHistory(); },
   eye: { EYE_KEY, eyeState },
   passes: { renderAO, AO, taaPass, composer, depthRT, depthOnly, lightDepthRT, lightCam, renderVolumetric, measureBounce },
   setTime(hour, day = state.day) { setLive(false); state.hour = hour; state.day = day; hourIn.value = hour; dayIn.value = day; updateSun(); },

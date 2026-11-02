@@ -41,8 +41,9 @@
   #hud .row { display: grid; grid-template-columns: 62px 1fr 92px; align-items: center; gap: 8px; margin: 4px 0; }
   #hud input { width: 100%; accent-color: #e0b866; }
   #hud span { text-align: right; font-variant-numeric: tabular-nums; }
-  #gotoRow { margin: 0 0 6px; }
-  #gotoBtn { width: 100%; padding: 4px 8px; font: inherit; text-align: left; color: #f3e6cf; background: rgba(12,8,4,.8);
+  #gotoRow { display: flex; gap: 6px; margin: 0 0 6px; }
+  #gotoBtn { flex: 1; }
+  :is(#gotoBtn, #tourBtn) { padding: 4px 8px; font: inherit; text-align: left; color: #f3e6cf; background: rgba(12,8,4,.8);
     border: 1px solid rgba(232,196,128,.35); border-radius: 3px; cursor: pointer; }
   #gotoBtn::after { content: '▾'; float: right; color: #b9a585; }
   #hud.goto #gotoBtn::after { content: '▴'; }
@@ -70,6 +71,23 @@
     padding: 12px; box-sizing: border-box; background: rgba(0,0,0,.7); }
   html.karte #karte { display: flex; }
   html.karte #help { display: none; }
+  #blende { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .5s; z-index: 1; }
+  #blende.zu { opacity: 1; }
+  #fuehrung { position: fixed; left: calc(min(360px, 55vh) * 66 / 140 + 32px); right: calc(min(360px, 55vh) * 66 / 140 + 32px); bottom: 16px;
+    max-width: 620px; margin: 0 auto; box-sizing: border-box; max-height: 45vh; overflow-y: auto; padding: 12px 16px; background: rgba(12,8,4,.72);
+    border: 1px solid rgba(232,196,128,.25); border-radius: 5px; z-index: 1; display: none; opacity: 0; transition: opacity .4s; }
+  html.rundgang #fuehrung { display: block; }
+  #fuehrung.da { opacity: 1; }
+  html.rundgang :is(#hud, #help) { display: none; }
+  html.rundgang #plan { pointer-events: none; }
+  #fNr { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #b9a585; }
+  #fTitel { margin: 2px 0 6px; font-size: 16px; color: #f0cf8a; }
+  #fText { margin: 0; font-size: 14px; line-height: 1.5; color: #e6d3b0; }
+  #fuehrung .knoepfe { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+  #fuehrung button { white-space: nowrap; padding: 4px 10px; font: inherit; font-size: 13px; color: #f3e6cf; background: rgba(12,8,4,.8);
+    border: 1px solid rgba(232,196,128,.35); border-radius: 3px; cursor: pointer; }
+  #fuehrung button:disabled { opacity: .4; cursor: default; }
+  #fuehrung button#fEnde { margin-right: auto; }
   #karte .kopf { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; max-width: 100%; }
   #karte button { padding: 5px 10px; font: inherit; font-size: 13px; color: #f3e6cf; background: rgba(12,8,4,.85);
     border: 1px solid rgba(232,196,128,.35); border-radius: 3px; cursor: pointer; }
@@ -130,6 +148,8 @@
   html.touch :is(#lampRow, #liveRow, #paintRow, #fullRow, #landRow, #planRow, #textRow, #measRow) { padding: 4px 0; }
   html.touch #plan { top: 12px; right: 12px; bottom: auto; height: min(220px, 40vh); }
   html.touch #hud.open ~ #plan { display: none; }
+  html.touch #fuehrung { left: 12px; right: 12px; bottom: calc(152px + env(safe-area-inset-bottom, 0px)); padding: 10px 12px; }
+  html.touch #fuehrung button { padding: 6px 12px; }
   html.touch.grundriss #hud:not(.open) { max-width: calc(100vw - 144px); }
 
   @media (orientation: landscape) and (max-height: 500px) {
@@ -148,7 +168,9 @@
     html.touch #hud.open .row { margin: 0 0 2px; }
     html.touch #hud.open .row input { height: 26px; }
     html.touch #hud.open #sunInfo { margin: 0 0 4px; }
-    html.touch #hud.open #gotoBtn { padding: 4px 8px; }
+    html.touch #hud.open :is(#gotoBtn, #tourBtn) { padding: 4px 8px; }
+    html.touch #fuehrung { left: calc(152px + env(safe-area-inset-left, 0px)); right: 12px; bottom: 12px; max-height: calc(100vh - 24px); }
+    html.touch.rundgang #plan { display: none; }
     html.touch #hud.goto #gotoList { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; grid-column: 1 / -1; max-height: calc(100vh - 90px); }
     html.touch #hud.goto #gotoList div { grid-column: 1 / -1; }
     html.touch #hud.open #gotoList button { padding: 6px; }
@@ -182,19 +204,19 @@
     </div>
     <span class="go"><span id="goText">Lädt …</span><span class="load" id="loadBar"></span></span>
     <p class="keys keys-only">WASD / Pfeiltasten laufen · Maus umsehen · Shift rennen<br>
-       Q / E Uhrzeit verschieben · N zurück zur aktuellen Zeit · F Originalfarben · L Öllampe · K Grundriss · Tab großer Plan · M Messwerte · Esc gibt die Maus frei</p>
+       Q / E Uhrzeit verschieben · N zurück zur aktuellen Zeit · F Originalfarben · L Öllampe · K Grundriss · Tab großer Plan · R Rundgang · M Messwerte · Esc gibt die Maus frei</p>
     <p class="keys touch-only">Kreis unten links: nach vorn/hinten laufen, zur Seite drehen, ganz nach vorn rennen<br>
-       Sonst überall wischen: umsehen · Menü oben links: Uhrzeit, Farben, Öllampe · Plan oben rechts antippen: dorthin springen</p>
+       Sonst überall wischen: umsehen · Menü oben links: Uhrzeit, Farben, Öllampe, Rundgang · Plan oben rechts antippen: dorthin springen</p>
     <p class="stand" id="stand"></p>
   </div>
 </div>
 
 <div id="fps">– FPS</div>
-<div id="help">WASD laufen · Maus umsehen · Shift rennen · Q/E Uhrzeit · N jetzt · F Farben · L Öllampe · K/Tab Plan · Esc Maus frei</div>
+<div id="help">WASD laufen · Maus umsehen · Shift rennen · Q/E Uhrzeit · N jetzt · F Farben · L Öllampe · K/Tab Plan · R Rundgang · Esc Maus frei</div>
 
 <div id="hud">
   <div id="place"><span id="placeName">–</span><div id="pose"></div><div id="raumtext"></div></div>
-  <div id="gotoRow"><button id="gotoBtn" type="button">Gehe zu …</button></div>
+  <div id="gotoRow"><button id="gotoBtn" type="button">Gehe zu …</button><button id="tourBtn" type="button">Rundgang <kbd>R</kbd></button></div>
   <div id="gotoList"></div>
   <div id="regler">
     <div class="row"><label for="hour">Uhrzeit</label><input id="hour" type="range" min="0" max="24" step="0.05" value="10.5"><span id="hourOut"></span></div>
@@ -215,6 +237,17 @@
 </div>
 
 <div id="stick"><div></div></div>
+<div id="blende"></div>
+<div id="fuehrung">
+  <div id="fNr"></div>
+  <div id="fTitel"></div>
+  <p id="fText"></p>
+  <div class="knoepfe">
+    <button type="button" id="fEnde"><kbd>Esc</kbd> Beenden</button>
+    <button type="button" id="fZurueck"><kbd>←</kbd> Zurück</button>
+    <button type="button" id="fWeiter"><kbd>Leertaste</kbd> Weiter</button>
+  </div>
+</div>
 <canvas id="plan"></canvas>
 <div id="karte">
   <div class="kopf">

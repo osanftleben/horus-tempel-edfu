@@ -118,7 +118,7 @@ addEventListener('mousemove', e => {
 const STICK = 56;
 const stickEl = document.getElementById('stick'), knobEl = stickEl.firstElementChild;
 const stick = { id: null, x0: 0, y0: 0, f: 0, s: 0 }, swipe = { id: null, x: 0, y: 0 };
-const onUI = e => e.target.closest?.('#hud, #start, #plan, #karte');
+const onUI = e => e.target.closest?.('#hud, #start, #plan, #karte, #fuehrung');
 addEventListener('touchstart', e => {
   if (onUI(e)) return;
   e.preventDefault();
@@ -232,6 +232,175 @@ function setView(x, z, yawDeg, pitchDeg = 0, level = 0, y = 0) {
   footY = floorAt(x, z);
   eyeY = footY + EYE;
 }
+let hold = null, glide = null;
+function holdView(onMove) {
+  hold = onMove;
+  glide = null;
+}
+const wrap = a => ((a % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+const lerpAngle = (a, b, k) => a + wrap(b - a) * k;
+const smooth = t => t * t * (3 - 2 * t);
+function sight(ax, az, bx, bz) {
+  const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.2);
+  for (let i = 1; i <= n; i++) {
+    const sx = ax + (bx - ax) * i / n, sz = az + (bz - az) * i / n;
+    updateLevel(sx, sz);
+    const fy = floorAt(sx, sz);
+    if (Math.abs(fy - footY) >= 0.6 || !isFree(sx, sz)) return false;
+    footY = fy;
+  }
+  return true;
+}
+function findPath(x, z, endLevel, endY) {
+  const p = camera.position, G = 0.4, M = 12, start = { x: p.x, z: p.z, level: curLevel, y: footY, prev: null };
+  const x0 = Math.min(p.x, x) - M + 0.0731, z0 = Math.min(p.z, z) - M + 0.0377;
+  const nx = Math.ceil((Math.abs(x - p.x) + 2 * M) / G), nz = Math.ceil((Math.abs(z - p.z) + 2 * M) / G);
+  const ti = Math.round((x - x0) / G), tj = Math.round((z - z0) / G);
+  const seen = new Set(), heap = [], h = n => Math.hypot(n.i - ti, n.j - tj);
+  const push = n => {
+    heap.push(n);
+    for (let k = heap.length - 1; k > 0;) {
+      const up = (k - 1) >> 1;
+      if (heap[up].f <= n.f) break;
+      [heap[up], heap[k]] = [n, heap[up]];
+      k = up;
+    }
+  };
+  const pop = () => {
+    const top = heap[0], last = heap.pop();
+    if (heap.length) {
+      heap[0] = last;
+      for (let k = 0; ;) {
+        const l = 2 * k + 1, r = l + 1;
+        let m = k;
+        if (l < heap.length && heap[l].f < heap[m].f) m = l;
+        if (r < heap.length && heap[r].f < heap[m].f) m = r;
+        if (m === k) break;
+        [heap[m], heap[k]] = [heap[k], heap[m]];
+        k = m;
+      }
+    }
+    return top;
+  };
+  Object.assign(start, { i: Math.round((p.x - x0) / G), j: Math.round((p.z - z0) / G), g: 0 });
+  start.f = h(start);
+  push(start);
+  for (let q = 0; heap.length && q < 8000; q++) {
+    const c = pop();
+    if (Math.abs(c.i - ti) <= 1 && Math.abs(c.j - tj) <= 1 && c.level === endLevel && Math.abs(c.y - endY) < 0.3) {
+      curLevel = c.level; footY = c.y;
+      if (sight(c.x, c.z, x, z)) {
+        const path = [{ x, z, level: endLevel, y: endY }];
+        for (let n = c; n; n = n.prev) path.unshift(n);
+        return path;
+      }
+    }
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+      const i = c.i + di, j = c.j + dj;
+      if ((!di && !dj) || i < 0 || j < 0 || i > nx || j > nz) continue;
+      const cx = x0 + i * G, cz = z0 + j * G;
+      curLevel = c.level; footY = c.y;
+      updateLevel(cx, cz);
+      const fy = floorAt(cx, cz);
+      const key = `${i},${j},${curLevel},${Math.round(fy * 2)}`;
+      if (seen.has(key) || Math.abs(fy - c.y) >= 0.6 || !isFree(cx, cz)) continue;
+      seen.add(key);
+      const n = { i, j, x: cx, z: cz, level: curLevel, y: fy, prev: c, g: c.g + Math.hypot(di, dj) };
+      n.f = n.g + h(n);
+      push(n);
+    }
+  }
+  return null;
+}
+function straighten(path) {
+  const out = [path[0]];
+  for (let a = 0; a < path.length - 1;) {
+    let b = a + 1;
+    for (let k = a + 2; k < path.length; k++) {
+      curLevel = path[a].level; footY = path[a].y;
+      if (!sight(path[a].x, path[a].z, path[k].x, path[k].z)) break;
+      b = k;
+    }
+    out.push(path[b]);
+    a = b;
+  }
+  return out;
+}
+function planGlide([x, z, , , level = 0, y = 0]) {
+  const p = camera.position, saved = [curLevel, footY];
+  if (Math.hypot(x - p.x, z - p.z) > 80) return null;
+  curLevel = level; footY = y; updateLevel(x, z);
+  const endLevel = curLevel, endY = floorAt(x, z);
+  [curLevel, footY] = saved;
+  let pts = endLevel === curLevel && sight(p.x, p.z, x, z) && curLevel === endLevel && Math.abs(footY - endY) < 0.3
+    ? [{ x: p.x, z: p.z }, { x, z }] : null;
+  [curLevel, footY] = saved;
+  if (!pts) {
+    const path = findPath(x, z, endLevel, endY);
+    pts = path && straighten(path);
+    [curLevel, footY] = saved;
+  }
+  if (!pts) return null;
+  let len = 0;
+  for (let i = 0; i < pts.length; i++) pts[i].s = len += i ? Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z) : 0;
+  if (len > 90) return null;
+  const ys = [footY];
+  for (let d = 0.25; d < len + 0.25; d += 0.25) {
+    const [sx, sz] = pointAt(pts, Math.min(d, len));
+    updateLevel(sx, sz);
+    ys.push(footY = floorAt(sx, sz));
+  }
+  [curLevel, footY] = saved;
+  const marks = [0];
+  for (let k = 1; k < ys.length; k++) {
+    const slope = Math.abs(ys[Math.min(ys.length - 1, k + 4)] - ys[Math.max(0, k - 5)]) / (0.25 * (Math.min(ys.length - 1, k + 4) - Math.max(0, k - 5)));
+    marks.push(marks[k - 1] + 0.25 * (1 + 3 * Math.min(1, slope)));
+  }
+  return { pts, len, marks, cost: marks[marks.length - 1] };
+}
+const RAMP = 1.5;
+function glideTo([, , yawDeg, pitchDeg = 0], { pts, len, marks, cost }, done) {
+  const v = Math.min(2.5, 1.8 + cost / 50, cost / RAMP);
+  glide = { pts, len, marks, cost, v, yaw0: yaw, pitch0: pitch, yaw1: deg(yawDeg), pitch1: deg(pitchDeg), time: 0, dur: cost / v + RAMP, done };
+}
+function distAt({ marks, len }, c) {
+  let k = 1;
+  while (k < marks.length - 1 && marks[k] < c) k++;
+  const f = Math.min(1, Math.max(0, (c - marks[k - 1]) / (marks[k] - marks[k - 1])));
+  return Math.min(len, (k - 1 + f) * 0.25);
+}
+function glideDist(g) {
+  const ramp = u => g.v * RAMP * (u ** 3 - u ** 4 / 2);
+  if (g.time < RAMP) return ramp(g.time / RAMP);
+  if (g.time > g.dur - RAMP) return g.cost - ramp((g.dur - g.time) / RAMP);
+  return g.v * (g.time - RAMP / 2);
+}
+function pointAt(pts, s) {
+  let i = 1;
+  while (i < pts.length - 1 && pts[i].s < s) i++;
+  const a = pts[i - 1], b = pts[i], k = b.s > a.s ? Math.min(1, Math.max(0, (s - a.s) / (b.s - a.s))) : 1;
+  return [a.x + (b.x - a.x) * k, a.z + (b.z - a.z) * k];
+}
+function stepGlide(dt) {
+  const g = glide;
+  g.time = Math.min(g.dur, g.time + dt);
+  g.t = g.time / g.dur;
+  const s = distAt(g, glideDist(g)), [x, z] = pointAt(g.pts, s), [ax, az] = pointAt(g.pts, Math.min(g.len, s + 2));
+  camera.position.x = x;
+  camera.position.z = z;
+  updateLevel(x, z);
+  footY = floorAt(x, z);
+  const begin = smooth(Math.min(1, g.t / 0.2)), finish = smooth(Math.max(0, (g.t - 0.7) / 0.3));
+  const head = ax !== x || az !== z ? Math.atan2(x - ax, z - az) : g.yaw1;
+  yaw += wrap(lerpAngle(lerpAngle(g.yaw0, head, begin), g.yaw1, finish) - yaw) * Math.min(1, dt * 2);
+  pitch = g.pitch0 + (0 - g.pitch0) * begin + (g.pitch1 - 0) * finish;
+  if (g.t === 1) {
+    yaw += wrap(g.yaw1 - yaw);
+    pitch = g.pitch1;
+    glide = null;
+    g.done();
+  }
+}
 const gotoBtn = document.getElementById('gotoBtn'), gotoList = document.getElementById('gotoList');
 for (const [gruppe, orte] of Object.entries(GRUPPEN)) {
   const g = document.createElement('div');
@@ -265,6 +434,16 @@ function updateControls(dt) {
   if (keys.KeyS || keys.ArrowDown) f -= 1;
   if (keys.KeyD || keys.ArrowRight) s += 1;
   if (keys.KeyA || keys.ArrowLeft) s -= 1;
+  if (hold) {
+    if (!f && !(s && !keys.ArrowLeft && !keys.ArrowRight) && Math.abs(stick.f) <= 0.15 && Math.abs(stick.s) <= 0.15) {
+      f = s = 0;
+      if (glide) stepGlide(dt);
+    } else {
+      const h = hold;
+      hold = glide = null;
+      h();
+    }
+  }
   const turn = Math.max(0, Math.abs(stick.s) - 0.15) / 0.85;
   yaw -= Math.sign(stick.s) * turn * turn * 1.8 * dt;
   if (!f && !s && Math.abs(stick.f) > 0.15) {
@@ -331,4 +510,4 @@ function updateEye(dt) {
   if (pose !== lastPose) { poseEl.textContent = pose; lastPose = pose; }
 }
 
-export { EYE_KEY, curLevel, eyeState, floorAt, isFree, onFloor, paintTarget, roomAt, setLevel, setView, updateControls, updateEye };
+export { EYE_KEY, curLevel, eyeState, floorAt, glideTo, holdView, planGlide, isFree, onFloor, paintTarget, roomAt, setLevel, setView, updateControls, updateEye };

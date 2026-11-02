@@ -30,5 +30,8 @@ const GRUPPEN = {
   },
 };
 const ANSICHTEN = Object.assign({}, ...Object.values(GRUPPEN));
+const RUNDGANG = ['Vor dem Pylon', 'Hof', 'Pronaos', 'Bibliothek', 'Festsaal', 'Schatzkammer', 'Opfertischsaal, Blick zur Westtür',
+  'Osttreppe', 'Dach über der Westtreppe', 'Hof des Reinheitsplatzes', 'Mittlerer Saal, Blick ins Allerheiligste', 'Allerheiligstes',
+  'Korridor der Mysterien', 'Kapelle des Götterthrons', 'Pylonturm, Plattform'];
 
-export { ANSICHTEN, GRUPPEN };
+export { ANSICHTEN, GRUPPEN, RUNDGANG };

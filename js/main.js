@@ -65,7 +65,7 @@ function resize() {
   camera.updateProjectionMatrix();
   renderer.setPixelRatio(STUFEN[stufe]);
   renderer.setSize(w, h);
-  setPostSize(w, h);
+  setPostSize();
   stars.uniforms.uPix.value = renderer.getPixelRatio();
   const b = renderer.getDrawingBufferSize(buf);
   depthRT.setSize(b.x, b.y);

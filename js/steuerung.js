@@ -24,7 +24,14 @@ const paintToggle = document.getElementById('paint');
 let paintTarget = 1;
 paintToggle.addEventListener('change', () => { paintTarget = paintToggle.checked ? 1 : 0; });
 const lampToggle = document.getElementById('lamp');
-lampToggle.addEventListener('change', () => setLamp(lampToggle.checked));
+let lampAuto = false, lampHeld = false;
+const switchLamp = on => {
+  setLamp(on);
+  lampToggle.checked = on;
+  lampAuto = false;
+  lampHeld = !on;
+};
+lampToggle.addEventListener('change', () => switchLamp(lampToggle.checked));
 const measToggle = document.getElementById('meas');
 const showMeas = on => {
   measToggle.checked = on;
@@ -55,10 +62,7 @@ addEventListener('keydown', e => {
     paintToggle.checked = !paintToggle.checked;
     paintTarget = paintToggle.checked ? 1 : 0;
   }
-  if (e.code === 'KeyL' && !e.repeat) {
-    setLamp(!lampOn);
-    lampToggle.checked = lampOn;
-  }
+  if (e.code === 'KeyL' && !e.repeat) switchLamp(!lampOn);
   if (e.code === 'KeyN' && !e.repeat) setLive(!live);
   if (e.code === 'KeyM' && !e.repeat) showMeas(!measToggle.checked);
   if (e.code === 'KeyK' && !e.repeat) showPlan(!planToggle.checked);
@@ -475,7 +479,7 @@ function updateControls(dt) {
 }
 
 const placeEl = document.getElementById('placeName'), poseEl = document.getElementById('pose'), raumEl = document.getElementById('raumtext');
-let lastPlace = '', lastPose = '';
+let lastPlace = '', lastPose = '', darkFor = 0, brightFor = 0;
 const lampHint = document.getElementById('lampHint');
 const EYE_KEY = { ref: 0.156, k: 0.5, highRef: 0.46, highK: 0.8, down: 0.6, up: 2.0 };
 const eyeState = {};
@@ -487,7 +491,18 @@ function updateEye(dt) {
   const light = around + 0.12 * lampLevel;
   const maxExp = 2.6 + 3.4 * (1 - state.daylight);
   const eyeExp = l => THREE.MathUtils.clamp(1.05 * Math.pow(l, -0.38), 1.0, maxExp);
-  lampHint.classList.toggle('show', !lampOn && around * eyeExp(around) < 0.2);
+  const seen = around * eyeExp(around), outdoors = OPEN_ZONES.includes(zoneAtPoint(p.x, p.y, p.z));
+  darkFor = seen < 0.2 && !outdoors ? darkFor + dt : 0;
+  brightFor = seen > 0.35 || outdoors ? brightFor + dt : 0;
+  if (brightFor > 1) lampHeld = false;
+  if (!lampOn && !lampHeld && darkFor > 0.4) {
+    setLamp(true);
+    lampToggle.checked = lampAuto = true;
+  } else if (lampOn && lampAuto && brightFor > 1.5) {
+    setLamp(false);
+    lampToggle.checked = lampAuto = false;
+  }
+  lampHint.classList.toggle('show', !lampOn && seen < 0.2 && !outdoors);
   const zoneExp = eyeExp(light), key = imageKey(), high = imageHigh();
   let imgExp = 1;
   if (key > 0) {

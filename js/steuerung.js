@@ -22,6 +22,14 @@ let paintTarget = 1;
 paintToggle.addEventListener('change', () => { paintTarget = paintToggle.checked ? 1 : 0; });
 const lampToggle = document.getElementById('lamp');
 lampToggle.addEventListener('change', () => setLamp(lampToggle.checked));
+const measToggle = document.getElementById('meas');
+const showMeas = on => {
+  measToggle.checked = on;
+  document.documentElement.classList.toggle('messwerte', on);
+  try { localStorage.setItem('edfu-messwerte', on ? '1' : ''); } catch (e) {}
+};
+measToggle.addEventListener('change', () => showMeas(measToggle.checked));
+try { showMeas(localStorage.getItem('edfu-messwerte') === '1'); } catch (e) {}
 addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'KeyF' && !e.repeat) {
@@ -33,6 +41,7 @@ addEventListener('keydown', e => {
     lampToggle.checked = lampOn;
   }
   if (e.code === 'KeyN' && !e.repeat) setLive(!live);
+  if (e.code === 'KeyM' && !e.repeat) showMeas(!measToggle.checked);
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
 });
 addEventListener('keyup', e => { keys[e.code] = false; });

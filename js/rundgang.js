@@ -9,7 +9,8 @@ const boxEl = document.getElementById('fuehrung'), blendeEl = document.getElemen
 const nrEl = document.getElementById('fNr'), titelEl = document.getElementById('fTitel'), textEl = document.getElementById('fText');
 const zurueckBtn = document.getElementById('fZurueck'), weiterBtn = document.getElementById('fWeiter');
 const stickEl = document.getElementById('stick'), hudEl = document.getElementById('hud');
-let station = -1, busy = false, timer = 0, vorab = 0;
+const autoToggle = document.getElementById('autoOn'), balkenEl = document.getElementById('fBalken');
+let station = -1, busy = false, timer = 0, vorab = 0, weiterAuto = 0;
 const wege = new Map();
 const weg = (a, b) => {
   const key = `${a}>${b}`;
@@ -28,12 +29,32 @@ function show(i) {
   busy = false;
   clearTimeout(vorab);
   if (i < RUNDGANG.length - 1) vorab = setTimeout(() => { if (station === i && !busy) weg(i, i + 1); }, 800);
+  planAuto();
 }
+function planAuto() {
+  clearTimeout(weiterAuto);
+  balkenEl.style.transition = 'none';
+  balkenEl.style.width = '0';
+  if (!autoToggle.checked || station < 0 || busy || station === RUNDGANG.length - 1) return;
+  const i = station, dauer = 5 + textEl.textContent.length / 18;
+  balkenEl.getBoundingClientRect();
+  balkenEl.style.transition = `width ${dauer}s linear`;
+  balkenEl.style.width = '100%';
+  weiterAuto = setTimeout(() => { if (station === i && !busy) next(); }, dauer * 1000);
+}
+const setAuto = on => {
+  autoToggle.checked = on;
+  try { localStorage.setItem('edfu-automatisch', on ? '1' : ''); } catch (e) {}
+  planAuto();
+};
+autoToggle.addEventListener('change', () => { autoToggle.blur(); setAuto(autoToggle.checked); });
+try { autoToggle.checked = localStorage.getItem('edfu-automatisch') === '1'; } catch (e) {}
 function go(i) {
   if (busy || i < 0 || i >= RUNDGANG.length) return;
   const from = station, pose = ANSICHTEN[RUNDGANG[i]], plan = from >= 0 && weg(from, i);
   busy = true;
   station = i;
+  planAuto();
   boxEl.classList.remove('da');
   if (plan) return glideTo(pose, plan, () => show(i));
   blendeEl.classList.add('zu');
@@ -62,6 +83,7 @@ function end() {
   busy = false;
   clearTimeout(timer);
   clearTimeout(vorab);
+  planAuto();
   holdView(null);
   blendeEl.classList.remove('zu');
   boxEl.classList.remove('da');
@@ -81,6 +103,7 @@ addEventListener('keydown', e => {
   if (e.code === 'Space' || e.code === 'ArrowRight') next();
   else if (e.code === 'ArrowLeft') go(station - 1);
   else if (e.code === 'Escape' || e.code === 'Tab') end();
+  else if (e.code === 'KeyP') setAuto(!autoToggle.checked);
 });
 document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement) end(); });
 

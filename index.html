@@ -78,6 +78,7 @@
     border: 1px solid rgba(232,196,128,.25); border-radius: 5px; z-index: 1; display: none; opacity: 0; transition: opacity .4s; }
   html.rundgang #fuehrung { display: block; }
   #fuehrung.da { opacity: 1; }
+  @media (max-width: 900px) { #fuehrung { left: 16px; } }
   html.rundgang :is(#hud, #help) { display: none; }
   html.rundgang #plan { pointer-events: none; }
   #fNr { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #b9a585; }
@@ -87,7 +88,11 @@
   #fuehrung button { white-space: nowrap; padding: 4px 10px; font: inherit; font-size: 13px; color: #f3e6cf; background: rgba(12,8,4,.8);
     border: 1px solid rgba(232,196,128,.35); border-radius: 3px; cursor: pointer; }
   #fuehrung button:disabled { opacity: .4; cursor: default; }
-  #fuehrung button#fEnde { margin-right: auto; }
+  #fAuto { display: flex; align-items: center; gap: 6px; margin-right: auto; font-size: 13px; color: #d9c29a; cursor: pointer; }
+  #fAuto input { margin: 0; accent-color: #e0b866; }
+  html.touch #fAuto input { width: 18px; height: 18px; }
+  #fBalken { height: 2px; width: 0; margin-top: 8px; background: rgba(232,196,128,.6); }
+  #fuehrung:not(:has(#autoOn:checked)) #fBalken { visibility: hidden; }
   #karte .kopf { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; max-width: 100%; }
   #karte button { padding: 5px 10px; font: inherit; font-size: 13px; color: #f3e6cf; background: rgba(12,8,4,.85);
     border: 1px solid rgba(232,196,128,.35); border-radius: 3px; cursor: pointer; }
@@ -244,9 +249,11 @@
   <p id="fText"></p>
   <div class="knoepfe">
     <button type="button" id="fEnde"><kbd>Esc</kbd> Beenden</button>
+    <label id="fAuto"><input id="autoOn" type="checkbox"> Automatisch <kbd>P</kbd></label>
     <button type="button" id="fZurueck"><kbd>←</kbd> Zurück</button>
     <button type="button" id="fWeiter"><kbd>Leertaste</kbd> Weiter</button>
   </div>
+  <div id="fBalken"></div>
 </div>
 <canvas id="plan"></canvas>
 <div id="karte">

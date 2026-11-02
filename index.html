@@ -28,6 +28,7 @@
   .go .load { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: #e8c480; transition: width .2s; }
   #start.ready .go .load { display: none; }
   .card .keys { margin-top: 18px; font-size: 13px; color: #b9a585; }
+  .card .stand { margin: 14px 0 0; font-size: 11px; color: #8a7a62; }
 
   #hud { position: fixed; left: 16px; bottom: 16px; padding: 12px 14px; background: rgba(12,8,4,.62);
     border: 1px solid rgba(232,196,128,.25); border-radius: 5px; font-size: 13px; z-index: 1; width: 300px; }
@@ -104,6 +105,7 @@
        Q / E Uhrzeit verschieben · N zurück zur aktuellen Zeit · F Originalfarben · L Öllampe · Esc gibt die Maus frei</p>
     <p class="keys touch-only">Links auf den Boden tippen und ziehen: laufen, ganz ausziehen: rennen<br>
        Rechts wischen: umsehen · Menü oben links: Uhrzeit, Farben, Öllampe</p>
+    <p class="stand" id="stand"></p>
   </div>
 </div>
 

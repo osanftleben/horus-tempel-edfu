@@ -13,6 +13,9 @@ const STEPS = [
   ['Licht und Himmel', './glaettung.js', 2], ['Licht und Himmel', './rueckstrahlung.js', 17], ['Licht und Himmel', './lampen.js', 5],
   ['Licht und Himmel', './steuerung.js', 2], ['Licht und Himmel', './main.js', 5],
 ];
+const stand = new Date(document.lastModified);
+if (!isNaN(stand)) document.getElementById('stand').textContent =
+  `Stand ${stand.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })} Uhr`;
 const COMPILE = 3000, FIRST = 1000;
 for (const [, mod] of STEPS) {
   const link = document.createElement('link');

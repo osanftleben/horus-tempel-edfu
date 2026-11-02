@@ -41,6 +41,10 @@
   #hud .row { display: grid; grid-template-columns: 62px 1fr 92px; align-items: center; gap: 8px; margin: 4px 0; }
   #hud input { width: 100%; accent-color: #e0b866; }
   #hud span { text-align: right; font-variant-numeric: tabular-nums; }
+  #gotoRow { display: grid; grid-template-columns: 62px 1fr; align-items: center; gap: 8px; margin: 0 0 6px; }
+  #goto { width: 100%; min-width: 0; padding: 3px 4px; font: inherit; color: #f3e6cf; background: rgba(12,8,4,.8);
+    border: 1px solid rgba(232,196,128,.35); border-radius: 3px; cursor: pointer; }
+  #goto option, #goto optgroup { color: #f3e6cf; background: #1c140b; }
   #sunInfo { margin-top: 6px; color: #b9a585; }
   #place { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(232,196,128,.18); color: #f0cf8a; }
   #pose { margin-top: 3px; font: 11px/1.3 ui-monospace, Consolas, monospace; color: #b9a585; white-space: pre; }
@@ -89,12 +93,13 @@
     border-radius: 50%; background: #e0b866; border: 2px solid #2a1c0c; }
   html.touch #hud .row input::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(232,196,128,.35); }
   html.touch #hud .row input::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #e0b866; border: 2px solid #2a1c0c; }
+  html.touch #goto { height: 34px; }
   html.touch #hud input[type=checkbox] { width: 18px; height: 18px; }
   html.touch #place { cursor: pointer; margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
   html.touch #place::after { content: ' ▾'; color: #b9a585; }
   html.touch #hud.open #place { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(232,196,128,.18); }
   html.touch #hud.open #place::after { content: ' ▴'; }
-  html.touch #hud:not(.open) :is(#pose, .row, #sunInfo, #liveRow, #paintRow, #fullRow, #landRow, #measRow) { display: none; }
+  html.touch #hud:not(.open) :is(#pose, .row, #gotoRow, #sunInfo, #liveRow, #paintRow, #fullRow, #landRow, #measRow) { display: none; }
   html.touch #hud:not(.open) #lampRow { margin-top: 8px; }
   html.touch :is(#lampRow, #liveRow, #paintRow, #fullRow, #landRow, #measRow) { padding: 4px 0; }
 
@@ -109,10 +114,12 @@
     .card .keys { margin: 8px 0 0; font-size: 11.5px; line-height: 1.35; }
     .card .stand { margin-top: 4px; }
     html.touch #hud.open { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; column-gap: 24px; }
-    html.touch #hud.open #place { grid-column: 1 / -1; }
+    html.touch #hud.open :is(#place, #gotoRow) { align-self: stretch; margin: 0 0 6px; padding-bottom: 6px; border-bottom: 1px solid rgba(232,196,128,.18); }
+    html.touch #hud.open #place { padding-top: 5px; }
     html.touch #hud.open .row { margin: 0 0 2px; }
     html.touch #hud.open .row input { height: 26px; }
     html.touch #hud.open #sunInfo { margin: 0 0 4px; }
+    html.touch #hud.open #goto { height: 26px; padding: 1px 4px; }
     html.touch #hud.open :is(#liveRow, #paintRow, #lampRow, #fullRow, #landRow, #measRow) { margin-top: 0; padding: 1px 0; }
     html.touch #hud.open #paintRow { border-top: 0; }
   }
@@ -155,6 +162,7 @@
 
 <div id="hud">
   <div id="place"><span id="placeName">–</span><div id="pose"></div></div>
+  <div id="gotoRow"><label for="goto">Gehe zu</label><select id="goto"><option value="">Ort wählen …</option></select></div>
   <div id="regler">
     <div class="row"><label for="hour">Uhrzeit</label><input id="hour" type="range" min="0" max="24" step="0.05" value="10.5"><span id="hourOut"></span></div>
     <div class="row"><label for="day">Datum</label><input id="day" type="range" min="1" max="365" step="1" value="304"><span id="dayOut"></span></div>

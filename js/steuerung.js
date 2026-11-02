@@ -15,6 +15,8 @@ import { MAM_COLLIDERS } from './bau/mammisi.js';
 import { lampLevel, lampOn, setLamp } from './licht.js';
 import { brazierPos, standLightAt, standPos } from './lampen.js';
 import { deg, hourIn, lastLive, live, setLive, state, syncNow, updateSun } from './himmel.js';
+import { resetHistory } from './glaettung.js';
+import { ANSICHTEN, GRUPPEN } from './ansichten.js';
 
 const keys = {};
 const paintToggle = document.getElementById('paint');
@@ -208,6 +210,22 @@ function setView(x, z, yawDeg, pitchDeg = 0, level = 0, y = 0) {
   footY = floorAt(x, z);
   eyeY = footY + EYE;
 }
+const gotoSel = document.getElementById('goto');
+for (const [gruppe, orte] of Object.entries(GRUPPEN)) {
+  const g = document.createElement('optgroup');
+  g.label = gruppe;
+  for (const ort of Object.keys(orte)) g.append(new Option(ort, ort));
+  gotoSel.append(g);
+}
+gotoSel.addEventListener('change', () => {
+  const view = ANSICHTEN[gotoSel.value];
+  gotoSel.value = '';
+  gotoSel.blur();
+  if (!view) return;
+  setView(...view);
+  resetHistory();
+  hudEl.classList.remove('open');
+});
 
 function updateControls(dt) {
   let gait = keys.ShiftLeft || keys.ShiftRight ? 3.0 : 1.4;

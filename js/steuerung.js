@@ -118,7 +118,7 @@ addEventListener('mousemove', e => {
 const STICK = 56;
 const stickEl = document.getElementById('stick'), knobEl = stickEl.firstElementChild;
 const stick = { id: null, x0: 0, y0: 0, f: 0, s: 0 }, swipe = { id: null, x: 0, y: 0 };
-const onUI = e => e.target.closest?.('#hud, #start');
+const onUI = e => e.target.closest?.('#hud, #start, #plan, #karte');
 addEventListener('touchstart', e => {
   if (onUI(e)) return;
   e.preventDefault();

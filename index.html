@@ -64,8 +64,18 @@
   #raumtext { margin-top: 5px; font-size: 12px; line-height: 1.4; color: #d9c29a; }
   html:not(.raumtexte) #raumtext, #raumtext:empty { display: none; }
   #plan { position: fixed; right: 16px; bottom: 16px; height: min(360px, 55vh); aspect-ratio: 66 / 140; opacity: .8;
-    border: 1px solid rgba(232,196,128,.25); border-radius: 5px; pointer-events: none; display: none; }
+    border: 1px solid rgba(232,196,128,.25); border-radius: 5px; cursor: pointer; display: none; }
   html.grundriss #plan { display: block; }
+  #karte { position: fixed; inset: 0; z-index: 5; display: none; flex-direction: column; align-items: center; gap: 8px;
+    padding: 12px; box-sizing: border-box; background: rgba(0,0,0,.7); }
+  html.karte #karte { display: flex; }
+  html.karte #help { display: none; }
+  #karte .kopf { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; max-width: 100%; }
+  #karte button { padding: 5px 10px; font: inherit; font-size: 13px; color: #f3e6cf; background: rgba(12,8,4,.85);
+    border: 1px solid rgba(232,196,128,.35); border-radius: 3px; cursor: pointer; }
+  #karte button.an { background: rgba(232,196,128,.3); border-color: rgba(232,196,128,.7); }
+  #karteName { flex-basis: 100%; text-align: center; font-size: 14px; color: #f0cf8a; text-shadow: 0 1px 2px #000; }
+  #karteBild { flex: 1; min-height: 0; width: min(100%, 560px); border: 1px solid rgba(232,196,128,.25); border-radius: 5px; cursor: crosshair; }
   html:not(.touch) :is(#fullRow, #landRow) { display: none; }
   #lampRow { display: flex; align-items: center; gap: 8px; margin-top: 6px; cursor: pointer; }
   #lampHint { color: #e8b060; font-size: 12px; display: none; }
@@ -172,15 +182,15 @@
     </div>
     <span class="go"><span id="goText">Lädt …</span><span class="load" id="loadBar"></span></span>
     <p class="keys keys-only">WASD / Pfeiltasten laufen · Maus umsehen · Shift rennen<br>
-       Q / E Uhrzeit verschieben · N zurück zur aktuellen Zeit · F Originalfarben · L Öllampe · K Grundriss · M Messwerte · Esc gibt die Maus frei</p>
+       Q / E Uhrzeit verschieben · N zurück zur aktuellen Zeit · F Originalfarben · L Öllampe · K Grundriss · Tab großer Plan · M Messwerte · Esc gibt die Maus frei</p>
     <p class="keys touch-only">Kreis unten links: nach vorn/hinten laufen, zur Seite drehen, ganz nach vorn rennen<br>
-       Sonst überall wischen: umsehen · Menü oben links: Uhrzeit, Farben, Öllampe</p>
+       Sonst überall wischen: umsehen · Menü oben links: Uhrzeit, Farben, Öllampe · Plan oben rechts antippen: dorthin springen</p>
     <p class="stand" id="stand"></p>
   </div>
 </div>
 
 <div id="fps">– FPS</div>
-<div id="help">WASD laufen · Maus umsehen · Shift rennen · Q/E Uhrzeit · N jetzt · F Farben · L Öllampe · K Plan · Esc Maus frei</div>
+<div id="help">WASD laufen · Maus umsehen · Shift rennen · Q/E Uhrzeit · N jetzt · F Farben · L Öllampe · K/Tab Plan · Esc Maus frei</div>
 
 <div id="hud">
   <div id="place"><span id="placeName">–</span><div id="pose"></div><div id="raumtext"></div></div>
@@ -206,6 +216,15 @@
 
 <div id="stick"><div></div></div>
 <canvas id="plan"></canvas>
+<div id="karte">
+  <div class="kopf">
+    <button type="button" data-ebene="0">Erdgeschoss</button>
+    <button type="button" data-ebene="1">Dächer und Türme</button>
+    <button type="button" id="karteZu">Schließen</button>
+    <span id="karteName"></span>
+  </div>
+  <canvas id="karteBild"></canvas>
+</div>
 
 <div id="err">WebGL 2 wird von diesem Browser nicht unterstützt.</div>
 

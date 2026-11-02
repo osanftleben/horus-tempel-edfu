@@ -5,7 +5,7 @@ import { paintUniform } from './material.js';
 import { depthOnly, depthRT, dustMat, lightCam, lightDepthRT, sun, updateLamp } from './licht.js';
 import { blurRT, renderVolumetric, volMat, volRT } from './strahlen.js';
 import { dayIn, deg, hourIn, moonDir, setLive, stars, state, sunDir, sunDirty, sunUpdated, trueSun, updateSun } from './himmel.js';
-import { bloom, composer, measureBounce, setComposerSize } from './rueckstrahlung.js';
+import { bloom, measureBounce, renderPost, setPostSize } from './rueckstrahlung.js';
 import { endFrame, jitterCamera, resetHistory, setBeams, taaPass } from './glaettung.js';
 import { updateStandLamps } from './lampen.js';
 import { AO, renderAO, setAOSize } from './verdeckung.js';
@@ -65,12 +65,12 @@ function resize() {
   camera.updateProjectionMatrix();
   renderer.setPixelRatio(STUFEN[stufe]);
   renderer.setSize(w, h);
-  setComposerSize(w, h);
+  setPostSize(w, h);
   stars.uniforms.uPix.value = renderer.getPixelRatio();
   const b = renderer.getDrawingBufferSize(buf);
   depthRT.setSize(b.x, b.y);
-  volRT.setSize(Math.ceil(b.x / 2), Math.ceil(b.y / 2));
-  blurRT.setSize(Math.ceil(b.x / 2), Math.ceil(b.y / 2));
+  volRT.setSize(Math.ceil(b.x / 4), Math.ceil(b.y / 4));
+  blurRT.setSize(Math.ceil(b.x / 4), Math.ceil(b.y / 4));
   setAOSize(b.x, b.y);
   dustMat.uniforms.uScale.value = b.y / (2 * Math.tan(deg(camera.fov) / 2));
 }
@@ -137,7 +137,7 @@ function frame() {
   renderer.setRenderTarget(null);
 
   camera.layers.enable(1);
-  composer.render(dt);
+  renderPost(dt);
   measureKey();
   endFrame();
   requestAnimationFrame(frame);
@@ -183,7 +183,7 @@ window.temple = { THREE, scene, camera, renderer, sunDir, moonDir, trueSun, stat
   get level() { return curLevel; }, set level(l) { setLevel(l); },
   get cull() { return cullOn; }, set cull(on) { cullOn = on; },  setView(...a) { setView(...a); resetHistory(); },
   eye: { EYE_KEY, eyeState },
-  passes: { renderAO, AO, taaPass, composer, depthRT, depthOnly, lightDepthRT, lightCam, renderVolumetric, measureBounce },
+  passes: { renderAO, AO, taaPass, renderPost, depthRT, depthOnly, lightDepthRT, lightCam, renderVolumetric, measureBounce },
   setTime(hour, day = state.day) { setLive(false); state.hour = hour; state.day = day; hourIn.value = hour; dayIn.value = day; updateSun(); },
 };
 

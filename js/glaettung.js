@@ -63,15 +63,6 @@ const taaMat = new THREE.ShaderMaterial({
       gl_FragColor = vec4(unsquash(res), a);
     }`,
 });
-const copyMat = new THREE.ShaderMaterial({
-  uniforms: { tDiffuse: { value: null } },
-  vertexShader: fullscreenVert,
-  fragmentShader: `
-    uniform sampler2D tDiffuse;
-    varying vec2 vUv;
-    void main() { gl_FragColor = texture2D(tDiffuse, vUv); }`,
-});
-
 const histTarget = () => new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false });
 class TAAPass extends Pass {
   constructor() {
@@ -84,19 +75,15 @@ class TAAPass extends Pass {
     taaMat.uniforms.uTexel.value.set(1 / w, 1 / h);
     taaMat.uniforms.uReset.value = 1;
   }
-  render(renderer, writeBuffer, readBuffer) {
+  render(renderer, readBuffer) {
     const [prev, next] = this.hist;
     taaMat.uniforms.tDiffuse.value = readBuffer.texture;
     taaMat.uniforms.tHistory.value = prev.texture;
-    this.quad.material = taaMat;
     renderer.setRenderTarget(next);
     this.quad.render(renderer);
     taaMat.uniforms.uReset.value = 0;
-    copyMat.uniforms.tDiffuse.value = next.texture;
-    this.quad.material = copyMat;
-    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
-    this.quad.render(renderer);
     this.hist = [next, prev];
+    return next;
   }
 }
 const taaPass = new TAAPass();

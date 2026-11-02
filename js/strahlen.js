@@ -72,8 +72,8 @@ const blurMat = new THREE.ShaderMaterial({
       gl_FragColor = vec4(c, 1.0);
     }`,
 });
-const halfTarget = () => new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false });
-const volRT = halfTarget(), blurRT = halfTarget();
+const volTarget = () => new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false });
+const volRT = volTarget(), blurRT = volTarget();
 const quad = new FullScreenQuad(volMat);
 
 function renderVolumetric() {

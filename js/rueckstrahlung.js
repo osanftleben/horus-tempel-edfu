@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
@@ -54,20 +53,31 @@ function measureBounce() {
   });
 }
 
-const composerRT = new THREE.WebGLRenderTarget(bufSize.x, bufSize.y, { type: THREE.HalfFloatType });
-const composer = new EffectComposer(renderer, composerRT);
-composer.addPass(new RenderPass(scene, camera));
-composer.addPass(taaPass);
+const sceneRT = new THREE.WebGLRenderTarget(bufSize.x, bufSize.y, { type: THREE.HalfFloatType });
+const renderPass = new RenderPass(scene, camera);
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.3, 0.5, 0.92);
 bloom.materialHighPassFilter.fragmentShader = bloom.materialHighPassFilter.fragmentShader
   .replace('gl_FragColor = mix( outputColor, texel, alpha );', 'gl_FragColor = mix( outputColor, texel, alpha * texel.a );');
-composer.addPass(bloom);
-composer.addPass(new OutputPass());
-function setComposerSize(w, h) {
-  const pr = renderer.getPixelRatio();
-  composer.setPixelRatio(pr);
-  composer.setSize(w, h);
-  bloom.setSize(Math.max(1, Math.round(w * pr / 2)), Math.max(1, Math.round(h * pr / 2)));
+bloom.blendMaterial = new THREE.ShaderMaterial({ vertexShader: 'void main() { gl_Position = vec4(0.0); }', fragmentShader: 'void main() {}' });
+const output = new OutputPass();
+output.renderToScreen = true;
+output.uniforms.tBloom = { value: bloom.renderTargetsHorizontal[0].texture };
+output.uniforms.uBloom = { value: 1 };
+output.material.fragmentShader = output.material.fragmentShader
+  .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse, tBloom; uniform float uBloom;')
+  .replace('gl_FragColor = texture2D( tDiffuse, vUv );', 'gl_FragColor = texture2D( tDiffuse, vUv ); vec4 b = texture2D( tBloom, vUv ); gl_FragColor.rgb += b.rgb * b.a * uBloom;');
+function renderPost(dt) {
+  renderPass.render(renderer, null, sceneRT);
+  const out = taaPass.render(renderer, sceneRT);
+  if (bloom.enabled) bloom.render(renderer, null, out, dt, false);
+  output.uniforms.uBloom.value = bloom.enabled ? 1 : 0;
+  output.render(renderer, null, out);
+}
+function setPostSize(w, h) {
+  const pr = renderer.getPixelRatio(), bw = Math.round(w * pr), bh = Math.round(h * pr);
+  sceneRT.setSize(bw, bh);
+  taaPass.setSize(bw, bh);
+  bloom.setSize(Math.max(1, Math.round(bw / 2)), Math.max(1, Math.round(bh / 2)));
 }
 
-export { bloom, composer, measureBounce, setComposerSize };
+export { bloom, measureBounce, renderPost, setPostSize };

@@ -69,7 +69,8 @@ canvas.addEventListener('pointerdown', e => {
   document.documentElement.classList.add('touch');
   if (e.clientX < innerWidth / 2 && stick.id === null) {
     Object.assign(stick, { id: e.pointerId, x0: e.clientX, y0: e.clientY, f: 0, s: 0 });
-    stickEl.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+    stickEl.style.left = `${e.clientX}px`;
+    stickEl.style.top = `${e.clientY}px`;
     knobEl.style.transform = '';
     stickEl.className = 'on';
   } else if (swipe.id === null) Object.assign(swipe, { id: e.pointerId, x: e.clientX, y: e.clientY });
@@ -93,7 +94,11 @@ canvas.addEventListener('pointermove', e => {
   }
 });
 const release = e => {
-  if (e.pointerId === stick.id) { stick.id = null; stick.f = stick.s = 0; stickEl.className = ''; }
+  if (e.pointerId === stick.id) {
+    stick.id = null;
+    stick.f = stick.s = 0;
+    stickEl.className = stickEl.style.left = stickEl.style.top = knobEl.style.transform = '';
+  }
   if (e.pointerId === swipe.id) swipe.id = null;
 };
 canvas.addEventListener('pointerup', release);

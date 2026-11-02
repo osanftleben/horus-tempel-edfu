@@ -1,0 +1,197 @@
+import * as THREE from 'three';
+import { OPEN_ZONES, PT, ROOMS, STEPS, zoneAtPoint, zoneLight } from './masse.js';
+import { imageHigh, imageKey } from './belichtung.js';
+import { camera, renderer } from './szene.js';
+import { courtPos, hallPos, proPos } from './bau/saeulen.js';
+import { SKY_Z } from './bau/festsaal.js';
+import { JAMB_COLLIDERS } from './bau/pronaos.js';
+import { BARK_Z, NAOS_Z, OFF_C, OFF_HOLES } from './bau/innenraeume.js';
+import { LEAF_COLLIDERS, falconPos, mastPos } from './bau/ausstattung.js';
+import { CHAPEL_COLLIDERS } from './bau/kapellen.js';
+import { CHAMBER_COLLIDERS } from './bau/kammern.js';
+import { SIDE_COLLIDERS } from './bau/seitenraeume.js';
+import { WAB_COLLIDERS } from './bau/reinheitsplatz.js';
+import { MAM_COLLIDERS } from './bau/mammisi.js';
+import { lampLevel, lampOn, setLamp } from './licht.js';
+import { brazierPos, standLightAt, standPos } from './lampen.js';
+import { deg, hourIn, lastLive, live, setLive, state, syncNow, updateSun } from './himmel.js';
+
+const keys = {};
+const paintToggle = document.getElementById('paint');
+let paintTarget = 1;
+paintToggle.addEventListener('change', () => { paintTarget = paintToggle.checked ? 1 : 0; });
+const lampToggle = document.getElementById('lamp');
+lampToggle.addEventListener('change', () => setLamp(lampToggle.checked));
+addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'KeyF' && !e.repeat) {
+    paintToggle.checked = !paintToggle.checked;
+    paintTarget = paintToggle.checked ? 1 : 0;
+  }
+  if (e.code === 'KeyL' && !e.repeat) {
+    setLamp(!lampOn);
+    lampToggle.checked = lampOn;
+  }
+  if (e.code === 'KeyN' && !e.repeat) setLive(!live);
+  if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+let yaw = deg(-12), pitch = deg(8), dragging = false;
+const canvas = renderer.domElement;
+const startEl = document.getElementById('start');
+const look = (dx, dy) => {
+  yaw -= dx * 0.0022;
+  pitch = THREE.MathUtils.clamp(pitch - dy * 0.0022, -1.45, 1.45);
+};
+const lockPointer = () => { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
+
+startEl.addEventListener('click', () => {
+  if (!startEl.classList.contains('ready')) return;
+  startEl.classList.add('hidden');
+  lockPointer();
+});
+canvas.addEventListener('click', () => { if (document.pointerLockElement !== canvas) lockPointer(); });
+canvas.addEventListener('mousedown', () => { dragging = true; });
+addEventListener('mouseup', () => { dragging = false; });
+addEventListener('mousemove', e => {
+  if (document.pointerLockElement === canvas || dragging) look(e.movementX, e.movementY);
+});
+
+const colliders = [
+  ...courtPos.map(([x, z]) => [x, z, 1.0]),
+  ...proPos.map(([x, z]) => [x, z, 1.2]),
+  ...hallPos.map(([x, z]) => [x, z, 1.0]),
+  ...falconPos.map(([x, z]) => [x, z, 1.35]),
+  ...OFF_HOLES.map(x => [x, OFF_C, 1.0]),
+  [0, NAOS_Z, 1.15], [0, BARK_Z + 0.7, 0.9], [0, BARK_Z - 0.7, 0.75],
+  ...mastPos.map(([x, z]) => [x, z, 0.45]),
+  ...standPos.map(([x, z]) => [x, z, 0.3]),
+  ...brazierPos.map(([x, z]) => [x, z, 0.75]),
+  ...CHAPEL_COLLIDERS,
+  ...SIDE_COLLIDERS,
+  ...CHAMBER_COLLIDERS,
+  ...WAB_COLLIDERS,
+  ...LEAF_COLLIDERS,
+  ...JAMB_COLLIDERS,
+  ...MAM_COLLIDERS,
+  ...SKY_Z.flatMap(c => [[0, c - 0.4, 0.85, 1], [0, c + 0.4, 0.85, 1]]),
+];
+const R = 0.35;
+let curLevel = 0;
+const onLevel = e => (e.levels ? e.levels.includes(curLevel) : (e.level ?? 0) === curLevel);
+const inRect = (r, x, z, m = 0) => x > r.x0 + m && x < r.x1 - m && z > r.z0 + m && z < r.z1 - m;
+let footY = 0;
+function stackedAt(x, z) {
+  let y = null;
+  for (const s of PT.floors) if (onLevel(s) && inRect(s, x, z) && (y === null || Math.abs(s.y - footY) < Math.abs(y - footY))) y = s.y;
+  return y;
+}
+const reachable = (x, z) => { const y = stackedAt(x, z); return y !== null && Math.abs(y - footY) < 0.6; };
+const inBand = r => !r.band || (footY > r.band[0] && footY < r.band[1]);
+function isFree(x, z) {
+  if (!ROOMS.some(r => onLevel(r) && inBand(r) && inRect(r, x, z, R) && (!r.stacked || reachable(x, z)))) return false;
+  for (const [cx, cz, cr, lv = 0] of colliders) {
+    if (lv !== curLevel) continue;
+    const dx = x - cx, dz = z - cz;
+    if (dx * dx + dz * dz < (cr + R) ** 2) return false;
+  }
+  return true;
+}
+function floorAt(x, z) {
+  const y = stackedAt(x, z);
+  if (y !== null && (Math.abs(y - footY) < 0.6 || !ROOMS.some(r => !r.stacked && onLevel(r) && inBand(r) && inRect(r, x, z)))) return y;
+  for (const s of STEPS) if (onLevel(s) && inRect(s, x, z)) return s.y;
+  const room = ROOMS.find(r => r.floor !== undefined && onLevel(r) && inBand(r) && inRect(r, x, z));
+  return room ? room.floor : 0;
+}
+const roomAt = (x, z) => ROOMS.find(r => onLevel(r) && inBand(r) && inRect(r, x, z));
+function updateLevel(x, z) {
+  const r = ROOMS.find(r => r.levels && r.levels.includes(curLevel) && inBand(r) && inRect(r, x, z));
+  if (r) curLevel = floorAt(x, z) > r.split ? r.levels[1] : r.levels[0];
+}
+function setLevel(l) { curLevel = l; }
+const EYE = 1.67;
+let eyeY = (footY = floorAt(camera.position.x, camera.position.z)) + EYE;
+function setView(x, z, yawDeg, pitchDeg = 0, level = 0, y = 0) {
+  camera.position.x = x; camera.position.z = z; yaw = deg(yawDeg); pitch = deg(pitchDeg);
+  curLevel = level; footY = y; updateLevel(x, z);
+  footY = floorAt(x, z);
+  eyeY = footY + EYE;
+}
+
+function updateControls(dt) {
+  let speed = (keys.ShiftLeft || keys.ShiftRight ? 3.0 : 1.4) * dt;
+  let f = 0, s = 0;
+  if (keys.KeyW || keys.ArrowUp) f += 1;
+  if (keys.KeyS || keys.ArrowDown) f -= 1;
+  if (keys.KeyD || keys.ArrowRight) s += 1;
+  if (keys.KeyA || keys.ArrowLeft) s -= 1;
+  if (f || s) {
+    const len = Math.hypot(f, s);
+    const ux = (-Math.sin(yaw) * f + Math.cos(yaw) * s) / len, uz = (-Math.cos(yaw) * f - Math.sin(yaw) * s) / len;
+    const px = camera.position.x, pz = camera.position.z;
+    const rise = floorAt(px + ux * 0.6, pz + uz * 0.6) - floorAt(px - ux * 0.3, pz - uz * 0.3);
+    if (rise > 0.15) speed *= 0.43; else if (rise < -0.15) speed *= 0.57;
+    const dx = ux * speed, dz = uz * speed;
+    if (isFree(camera.position.x + dx, camera.position.z)) camera.position.x += dx;
+    if (isFree(camera.position.x, camera.position.z + dz)) camera.position.z += dz;
+    updateLevel(camera.position.x, camera.position.z);
+    footY = floorAt(camera.position.x, camera.position.z);
+  }
+  eyeY += (footY + EYE - eyeY) * Math.min(1, dt * 10);
+  camera.position.y = eyeY;
+  if (keys.KeyQ || keys.KeyE) {
+    if (live) setLive(false);
+    state.hour = THREE.MathUtils.clamp(state.hour + (keys.KeyE ? 1 : -1) * dt * 0.8, 0, 24);
+    hourIn.value = state.hour;
+    updateSun();
+  } else if (live && performance.now() - lastLive > 15000) syncNow();
+  camera.rotation.set(pitch, yaw, 0);
+}
+
+const placeEl = document.getElementById('placeName'), poseEl = document.getElementById('pose');
+let lastPlace = '', lastPose = '';
+const brightIn = document.getElementById('bright'), brightOut = document.getElementById('brightOut');
+let brightness = 1;
+try { brightness = +(localStorage.getItem('edfu-brightness') || 1); } catch (e) {}
+if (!(brightness >= 0.5 && brightness <= 2.5)) brightness = 1;
+const showBright = () => { brightIn.value = brightness; brightOut.textContent = `${Math.round(brightness * 100)} %`; };
+brightIn.addEventListener('input', () => {
+  brightness = +brightIn.value;
+  showBright();
+  try { localStorage.setItem('edfu-brightness', brightness); } catch (e) {}
+});
+showBright();
+const lampHint = document.getElementById('lampHint');
+const EYE_KEY = { ref: 0.156, k: 0.5, highRef: 0.46, highK: 0.8, down: 0.6, up: 2.0 };
+const eyeState = {};
+function updateEye(dt) {
+  const p = camera.position;
+  const base = 0.01 + 0.09 * state.daylight;
+  const sky = Math.max(state.daylight > 0 ? state.light : 0.25 * state.light, 0.3 * state.dusk);
+  const around = zoneLight(p.x, p.y, p.z) * (base + (1 - base) * sky) + standLightAt(p);
+  const light = around + 0.12 * lampLevel;
+  const maxExp = 2.6 + 3.4 * (1 - state.daylight);
+  const eyeExp = l => brightness * THREE.MathUtils.clamp(1.05 * Math.pow(l, -0.38), 1.0, maxExp);
+  lampHint.classList.toggle('show', !lampOn && around * eyeExp(around) < 0.2);
+  const zoneExp = eyeExp(light) / brightness, key = imageKey(), high = imageHigh();
+  let imgExp = 1;
+  if (key > 0) {
+    const open = OPEN_ZONES.includes(zoneAtPoint(p.x, p.y, p.z)) ? Math.max(state.daylight, state.dusk) : 0;
+    imgExp = THREE.MathUtils.clamp(Math.min(Math.pow(EYE_KEY.ref / (key * zoneExp), EYE_KEY.k),
+      Math.pow(EYE_KEY.highRef / (high * zoneExp), EYE_KEY.highK * open)),
+    1 - (1 - EYE_KEY.down) * state.daylight, 1 + (EYE_KEY.up - 1) * open);
+  }
+  Object.assign(eyeState, { key, high, zoneExp, imgExp });
+  const targetExp = zoneExp * brightness * imgExp;
+  renderer.toneMappingExposure += (targetExp - renderer.toneMappingExposure) * Math.min(1, dt * 0.8);
+  const name = roomAt(p.x, p.z)?.name ?? '';
+  if (name !== lastPlace) { placeEl.textContent = name; lastPlace = name; }
+  const r = THREE.MathUtils.radToDeg, look = ((r(yaw) % 360) + 540) % 360 - 180;
+  const pose = `x ${p.x.toFixed(2)}  z ${p.z.toFixed(2)}  y ${p.y.toFixed(2)}\nBlick ${look.toFixed(0)}°  Neigung ${r(pitch).toFixed(0)}°  Ebene ${curLevel}`;
+  if (pose !== lastPose) { poseEl.textContent = pose; lastPose = pose; }
+}
+
+export { EYE_KEY, curLevel, eyeState, floorAt, isFree, paintTarget, roomAt, setLevel, setView, updateControls, updateEye };

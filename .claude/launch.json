@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "edfu",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["server.py", "8123"],
+      "port": 8123
+    },
+    {
+      "name": "edfu-messen",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["server.py", "8125"],
+      "port": 8125,
+      "autoPort": false
+    }
+  ]
+}

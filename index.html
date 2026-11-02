@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horus-Tempel von Edfu</title>
+<style>
+  @font-face { font-family: 'Noto Sans Egyptian Hieroglyphs'; font-style: normal; font-weight: 400; font-display: block;
+    src: url(fonts/NotoSansEgyptianHieroglyphs-Regular.woff2) format('woff2'); unicode-range: U+13000-13455, U+13460-143FA; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #f3e6cf;
+    font-family: Georgia, "Times New Roman", serif; }
+  canvas { display: block; }
+
+  #start { position: fixed; inset: 0; display: flex; overflow-y: auto; padding: 16px; box-sizing: border-box;
+    background: radial-gradient(ellipse at center, rgba(20,12,4,.55), rgba(0,0,0,.85)); cursor: pointer; z-index: 2; }
+  #start.hidden { display: none; }
+  .card { margin: auto; max-width: 540px; padding: 32px 36px; text-align: center; border: 1px solid rgba(232,196,128,.35);
+    background: rgba(18,12,6,.7); border-radius: 6px; }
+  .card h1 { margin: 0; font-size: 34px; letter-spacing: .08em; color: #f0cf8a; font-weight: normal; }
+  .card h2 { margin: 6px 0 18px; font-size: 17px; font-weight: normal; font-style: italic; color: #d9c29a; }
+  .card p { margin: 0 0 14px; line-height: 1.5; font-size: 15px; color: #e6d6ba; }
+  .card .go { display: inline-block; margin-top: 8px; padding: 10px 26px; border: 1px solid #e8c480;
+    color: #f0cf8a; letter-spacing: .1em; border-radius: 3px; position: sticky; bottom: 0; background: rgb(28,19,9); }
+  #start:not(.ready) { cursor: progress; }
+  #start:not(.ready) .go { border-style: dashed; color: #c9ad7a; }
+  .go { position: relative; overflow: hidden; width: 19em; max-width: 100%; box-sizing: border-box;
+    white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }
+  .go .load { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: #e8c480; transition: width .2s; }
+  #start.ready .go .load { display: none; }
+  .card .keys { margin-top: 18px; font-size: 13px; color: #b9a585; }
+
+  #hud { position: fixed; left: 16px; bottom: 16px; padding: 12px 14px; background: rgba(12,8,4,.62);
+    border: 1px solid rgba(232,196,128,.25); border-radius: 5px; font-size: 13px; z-index: 1; width: 300px; }
+  #hud .row { display: grid; grid-template-columns: 62px 1fr 92px; align-items: center; gap: 8px; margin: 4px 0; }
+  #hud input { width: 100%; accent-color: #e0b866; }
+  #hud span { text-align: right; font-variant-numeric: tabular-nums; }
+  #sunInfo { margin-top: 6px; color: #b9a585; }
+  #place { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(232,196,128,.18); color: #f0cf8a; }
+  #pose { margin-top: 3px; font: 11px/1.3 ui-monospace, Consolas, monospace; color: #b9a585; white-space: pre; }
+  #paintRow { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 8px;
+    border-top: 1px solid rgba(232,196,128,.18); cursor: pointer; }
+  #paintRow input, #lampRow input, #liveRow input { width: auto; margin: 0; }
+  #liveRow { display: flex; align-items: center; gap: 8px; margin-top: 6px; cursor: pointer; }
+  #lampRow { display: flex; align-items: center; gap: 8px; margin-top: 6px; cursor: pointer; }
+  #lampHint { color: #e8b060; font-size: 12px; display: none; }
+  #lampHint.show { display: inline; }
+  kbd { font: 11px Consolas, monospace; padding: 1px 5px; border: 1px solid rgba(232,196,128,.4); border-radius: 3px; color: #d9c29a; }
+
+  #help { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); font-size: 13px;
+    padding: 6px 12px; background: rgba(12,8,4,.5); border-radius: 4px; color: #d9c29a; z-index: 1;
+    width: max-content; max-width: calc(100vw - 260px); text-align: center; }
+  #fps { position: fixed; top: 12px; right: 16px; padding: 6px 10px; background: rgba(12,8,4,.6);
+    border: 1px solid rgba(232,196,128,.25); border-radius: 4px; font: 13px/1.3 Consolas, monospace;
+    color: #f0cf8a; text-align: right; z-index: 1; font-variant-numeric: tabular-nums; }
+  #fps small { color: #b9a585; font-size: 11px; }
+  #err { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "./lib/three/build/three.module.js",
+    "three/addons/": "./lib/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+
+<div id="start">
+  <div class="card">
+    <h1>Horus-Tempel von Edfu</h1>
+    <h2>Vom Pylon bis zum Allerheiligsten</h2>
+    <p>Rekonstruktion im ursprünglichen Zustand, erbaut von den Ptolemäern 237 bis 57&nbsp;v.&nbsp;Chr. Du stehst im Hof
+       hinter dem 33&nbsp;m hohen Pylon. Nach Norden folgen Pronaos, Festsaal, Opfertischsaal und Mittlerer Saal, ganz hinten
+       das Allerheiligste mit dem Granitschrein des Nektanebos II. und der Barke des Horus.</p>
+    <p>Unterwegs: im Pronaos das Haus des Morgens und die Bibliothek, am Festsaal Laboratorium, Schatzkammer und Nilkammer,
+       rund um das Allerheiligste der Korridor der Mysterien mit zehn Kapellen. Die Osttreppe im Opfertischsaal führt aufs Dach,
+       das Pylontor und die Türen in den hinteren Hofecken hinaus in den Umgang.</p>
+    <p>Sonne, Mond und Sterne stehen so, wie sie gerade über Edfu stehen. Drinnen wird es dunkel – nimm die Öllampe mit (L).
+       Mit F wechselst du zwischen der ursprünglichen Bemalung und dem heutigen Stein.</p>
+    <span class="go"><span id="goText">Lädt …</span><span class="load" id="loadBar"></span></span>
+    <p class="keys">WASD / Pfeiltasten laufen · Maus umsehen · Shift rennen<br>
+       Q / E Uhrzeit verschieben · N zurück zur aktuellen Zeit · F Originalfarben · L Öllampe · Esc gibt die Maus frei</p>
+  </div>
+</div>
+
+<div id="fps">– FPS</div>
+<div id="help">WASD laufen · Maus umsehen · Shift rennen · Q/E Uhrzeit · N jetzt · F Farben · L Öllampe · Esc Maus frei</div>
+
+<div id="hud">
+  <div id="place"><span id="placeName">–</span><div id="pose"></div></div>
+  <div class="row"><label for="hour">Uhrzeit</label><input id="hour" type="range" min="0" max="24" step="0.05" value="10.5"><span id="hourOut"></span></div>
+  <div class="row"><label for="day">Datum</label><input id="day" type="range" min="1" max="365" step="1" value="304"><span id="dayOut"></span></div>
+  <div class="row"><label for="bright">Helligkeit</label><input id="bright" type="range" min="0.5" max="2.5" step="0.05" value="1"><span id="brightOut"></span></div>
+  <div id="sunInfo"></div>
+  <label id="liveRow"><input id="live" type="checkbox" checked> Aktuelle Zeit <kbd>N</kbd></label>
+  <label id="paintRow"><input id="paint" type="checkbox" checked> Originalbemalung <kbd>F</kbd></label>
+  <label id="lampRow"><input id="lamp" type="checkbox"> Öllampe <kbd>L</kbd> <span id="lampHint">– zu dunkel? Anzünden!</span></label>
+</div>
+
+<div id="err">WebGL 2 wird von diesem Browser nicht unterstützt.</div>
+
+<script type="module" src="js/laden.js"></script>
+</body>
+</html>

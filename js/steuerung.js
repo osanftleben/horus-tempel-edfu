@@ -87,7 +87,10 @@ startEl.addEventListener('click', () => {
   if (touchMode()) setFull(true);
   else lockPointer();
 });
-canvas.addEventListener('click', () => { if (!touchMode() && document.pointerLockElement !== canvas) lockPointer(); });
+canvas.addEventListener('click', () => {
+  hudEl.classList.remove('goto');
+  if (!touchMode() && document.pointerLockElement !== canvas) lockPointer();
+});
 canvas.addEventListener('mousedown', () => { dragging = true; });
 addEventListener('mouseup', () => { dragging = false; });
 addEventListener('mousemove', e => {
@@ -102,7 +105,7 @@ addEventListener('touchstart', e => {
   if (onUI(e)) return;
   e.preventDefault();
   document.documentElement.classList.add('touch');
-  hudEl.classList.remove('open');
+  hudEl.classList.remove('open', 'goto');
   const r = stickEl.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   for (const t of e.changedTouches) {
     if (stick.id === null && Math.hypot(t.clientX - cx, t.clientY - cy) < STICK + 24) {
@@ -146,7 +149,7 @@ addEventListener('touchcancel', release);
 
 const hudEl = document.getElementById('hud');
 document.getElementById('place').addEventListener('click', () => {
-  if (touchMode()) hudEl.classList.toggle('open');
+  if (touchMode() && !hudEl.classList.toggle('open')) hudEl.classList.remove('goto');
 });
 
 const colliders = [
@@ -210,21 +213,30 @@ function setView(x, z, yawDeg, pitchDeg = 0, level = 0, y = 0) {
   footY = floorAt(x, z);
   eyeY = footY + EYE;
 }
-const gotoSel = document.getElementById('goto');
+const gotoBtn = document.getElementById('gotoBtn'), gotoList = document.getElementById('gotoList');
 for (const [gruppe, orte] of Object.entries(GRUPPEN)) {
-  const g = document.createElement('optgroup');
-  g.label = gruppe;
-  for (const ort of Object.keys(orte)) g.append(new Option(ort, ort));
-  gotoSel.append(g);
+  const g = document.createElement('div');
+  g.textContent = gruppe;
+  gotoList.append(g);
+  for (const ort of Object.keys(orte)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = b.dataset.ort = ort;
+    gotoList.append(b);
+  }
 }
-gotoSel.addEventListener('change', () => {
-  const view = ANSICHTEN[gotoSel.value];
-  gotoSel.value = '';
-  gotoSel.blur();
+gotoBtn.addEventListener('click', () => {
+  hudEl.classList.toggle('goto');
+  gotoList.scrollTop = 0;
+  gotoBtn.blur();
+});
+gotoList.addEventListener('click', e => {
+  const view = ANSICHTEN[e.target.dataset?.ort];
   if (!view) return;
+  e.target.blur();
   setView(...view);
   resetHistory();
-  hudEl.classList.remove('open');
+  hudEl.classList.remove('open', 'goto');
 });
 
 function updateControls(dt) {

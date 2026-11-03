@@ -131,7 +131,7 @@ let tap = null;
 addEventListener('touchstart', e => {
   tap = null;
   const t = e.changedTouches[0];
-  if (station < 0 || e.touches.length > 1 || e.target.closest?.('#hud, #fuehrung, #karte')) return;
+  if (station < 0 || e.touches.length > 1 || e.target.closest?.('#hud, #fuehrung, #karte, #fotoEin')) return;
   const r = stickEl.getBoundingClientRect();
   if (Math.hypot(t.clientX - r.left - r.width / 2, t.clientY - r.top - r.height / 2) < r.width / 2 + 24) return;
   tap = { id: t.identifier, x: t.clientX, y: t.clientY, at: performance.now() };

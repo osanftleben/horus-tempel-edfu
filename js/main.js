@@ -13,6 +13,7 @@ import { measureKey } from './belichtung.js';
 import { updatePlan } from './grundriss.js';
 import './rundgang.js';
 import './klang.js';
+import { fotoNachBild } from './foto.js';
 import { EYE_KEY, curLevel, eyeState, floorAt, isFree, paintTarget, roomAt, setLevel, setView, updateControls, updateEye } from './steuerung.js';
 
 const SEALED = ZONES.filter(z => z.portals).map(zone => ({ zone,
@@ -142,6 +143,7 @@ function frame() {
 
   camera.layers.enable(1);
   renderPost(dt);
+  fotoNachBild();
   measureKey();
   endFrame();
   requestAnimationFrame(frame);

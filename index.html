@@ -43,7 +43,7 @@
   #hud span { text-align: right; font-variant-numeric: tabular-nums; }
   #gotoRow { display: flex; gap: 6px; margin: 0 0 6px; }
   #gotoBtn { flex: 1; }
-  :is(#gotoBtn, #tourBtn) { padding: 4px 8px; font: inherit; text-align: left; color: #f3e6cf; background: rgba(12,8,4,.8);
+  :is(#gotoBtn, #tourBtn, #fotoRow button, #fotoEin) { padding: 4px 8px; font: inherit; text-align: left; color: #f3e6cf; background: rgba(12,8,4,.8);
     border: 1px solid rgba(232,196,128,.35); border-radius: 3px; cursor: pointer; }
   #gotoBtn::after { content: '▾'; float: right; color: #b9a585; }
   #hud.goto #gotoBtn::after { content: '▴'; }
@@ -71,6 +71,11 @@
     padding: 12px; box-sizing: border-box; background: rgba(0,0,0,.7); }
   html.karte #karte { display: flex; }
   html.karte #help { display: none; }
+  #fotoRow { display: flex; gap: 6px; margin-top: 8px; }
+  #fotoRow button { flex: 1; }
+  #fotoEin { position: fixed; top: 12px; left: 12px; z-index: 2; width: auto; opacity: .6; display: none; }
+  html.foto :is(#hud, #plan, #help, #fps, #fuehrung, #stick) { display: none !important; }
+  html.foto.touch #fotoEin { display: block; }
   #blende { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .5s; z-index: 1; }
   #blende.zu { opacity: 1; }
   #fuehrung { position: fixed; left: calc(min(360px, 55vh) * 66 / 140 + 32px); right: calc(min(360px, 55vh) * 66 / 140 + 32px); bottom: 16px;
@@ -148,7 +153,7 @@
   html.touch #placeName::after { content: ' ▾'; color: #b9a585; }
   html.touch #hud.open #place { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(232,196,128,.18); }
   html.touch #hud.open #placeName::after { content: ' ▴'; }
-  html.touch #hud:not(.open) :is(#pose, #raumtext, .row, #gotoRow, #sunInfo, #liveRow, #paintRow, #fullRow, #landRow, #planRow, #textRow, #measRow, #soundRow) { display: none; }
+  html.touch #hud:not(.open) :is(#pose, #raumtext, .row, #gotoRow, #sunInfo, #liveRow, #paintRow, #fullRow, #landRow, #planRow, #textRow, #measRow, #soundRow, #fotoRow) { display: none; }
   html.touch #hud:not(.open) #lampRow { margin-top: 8px; }
   html.touch :is(#lampRow, #liveRow, #paintRow, #fullRow, #landRow, #planRow, #textRow, #measRow) { padding: 4px 0; }
   html.touch #plan { top: 12px; right: 12px; bottom: auto; height: min(220px, 40vh); }
@@ -209,15 +214,15 @@
     </div>
     <span class="go"><span id="goText">Lädt …</span><span class="load" id="loadBar"></span></span>
     <p class="keys keys-only">WASD / Pfeiltasten laufen · Maus umsehen · Shift rennen<br>
-       Q / E Uhrzeit verschieben · N zurück zur aktuellen Zeit · F Originalfarben · L Öllampe · T Klang · K Grundriss · Tab großer Plan · R Rundgang · M Messwerte · Esc gibt die Maus frei</p>
+       Q / E Uhrzeit verschieben · N zurück zur aktuellen Zeit · F Originalfarben · L Öllampe · T Klang · K Grundriss · Tab großer Plan · R Rundgang · H Menüs ausblenden · B Foto · M Messwerte · Esc gibt die Maus frei</p>
     <p class="keys touch-only">Kreis unten links: nach vorn/hinten laufen, zur Seite drehen, ganz nach vorn rennen<br>
-       Sonst überall wischen: umsehen · Menü oben links: Uhrzeit, Farben, Öllampe, Klang, Rundgang · Plan oben rechts antippen: dorthin springen</p>
+       Sonst überall wischen: umsehen · Menü oben links: Uhrzeit, Farben, Öllampe, Klang, Rundgang, Foto · Plan oben rechts antippen: dorthin springen</p>
     <p class="stand" id="stand"></p>
   </div>
 </div>
 
 <div id="fps">– FPS</div>
-<div id="help">WASD laufen · Maus umsehen · Shift rennen · Q/E Uhrzeit · N jetzt · F Farben · L Öllampe · T Klang · K/Tab Plan · R Rundgang · Esc Maus frei</div>
+<div id="help">WASD laufen · Maus umsehen · Shift rennen · Q/E Uhrzeit · N jetzt · F Farben · L Öllampe · T Klang · K/Tab Plan · R Rundgang · H ausblenden · B Foto · Esc Maus frei</div>
 
 <div id="hud">
   <div id="place"><span id="placeName">–</span><div id="pose"></div><div id="raumtext"></div></div>
@@ -239,11 +244,13 @@
     <label id="planRow"><input id="planOn" type="checkbox" checked> Grundriss <kbd>K</kbd></label>
     <label id="textRow"><input id="texts" type="checkbox" checked> Raumtexte</label>
     <label id="measRow"><input id="meas" type="checkbox"> Messwerte <kbd>M</kbd></label>
+    <div id="fotoRow"><button id="fotoAus" type="button">Ausblenden <kbd>H</kbd></button><button id="fotoBild" type="button">Foto <kbd>B</kbd></button></div>
   </div>
 </div>
 
 <div id="stick"><div></div></div>
 <div id="blende"></div>
+<button id="fotoEin" type="button">Einblenden</button>
 <div id="fuehrung">
   <div id="fNr"></div>
   <div id="fTitel"></div>

@@ -2,7 +2,7 @@ import { renderer, camera } from './szene.js';
 import { resetHistory } from './glaettung.js';
 import { ANSICHTEN, RUNDGANG } from './ansichten.js';
 import { RAUMTEXTE } from './raumtexte.js';
-import { glideTo, holdView, planGlide, roomAt, setView } from './steuerung.js';
+import { glideTo, holdView, planGlideLater, roomAt, setView } from './steuerung.js';
 
 const html = document.documentElement;
 const boxEl = document.getElementById('fuehrung'), blendeEl = document.getElementById('blende');
@@ -10,13 +10,24 @@ const nrEl = document.getElementById('fNr'), titelEl = document.getElementById('
 const zurueckBtn = document.getElementById('fZurueck'), weiterBtn = document.getElementById('fWeiter');
 const stickEl = document.getElementById('stick'), hudEl = document.getElementById('hud');
 const autoToggle = document.getElementById('autoOn'), balkenEl = document.getElementById('fBalken');
-let station = -1, busy = false, timer = 0, vorab = 0, weiterAuto = 0;
+let station = -1, busy = false, timer = 0, vorab = 0, weiterAuto = 0, zug = 0;
 const wege = new Map();
 const weg = (a, b) => {
   const key = `${a}>${b}`;
-  if (!wege.has(key)) wege.set(key, planGlide(ANSICHTEN[RUNDGANG[b]]));
-  return wege.get(key);
+  if (!wege.has(key)) {
+    const job = planGlideLater(ANSICHTEN[RUNDGANG[b]]);
+    wege.set(key, job);
+    job.promise.then(() => { job.fertig = true; });
+  }
+  return wege.get(key).promise;
 };
+function wegeAbbrechen() {
+  for (const [key, job] of wege) {
+    if (job.fertig) continue;
+    job.cancel();
+    wege.delete(key);
+  }
+}
 
 function show(i) {
   const p = camera.position, room = roomAt(p.x, p.z);
@@ -28,7 +39,7 @@ function show(i) {
   boxEl.classList.add('da');
   busy = false;
   clearTimeout(vorab);
-  if (i < RUNDGANG.length - 1) vorab = setTimeout(() => { if (station === i && !busy) weg(i, i + 1); }, 800);
+  if (i < RUNDGANG.length - 1) vorab = setTimeout(() => { if (station === i && !busy) weg(i, i + 1); }, 300);
   planAuto();
 }
 function planAuto() {
@@ -51,12 +62,19 @@ autoToggle.addEventListener('change', () => { autoToggle.blur(); setAuto(autoTog
 try { autoToggle.checked = localStorage.getItem('edfu-automatisch') === '1'; } catch (e) {}
 function go(i) {
   if (busy || i < 0 || i >= RUNDGANG.length) return;
-  const from = station, pose = ANSICHTEN[RUNDGANG[i]], plan = from >= 0 && weg(from, i);
+  const from = station, pose = ANSICHTEN[RUNDGANG[i]], meinZug = ++zug;
   busy = true;
   station = i;
   planAuto();
   boxEl.classList.remove('da');
-  if (plan) return glideTo(pose, plan, () => show(i));
+  if (from < 0) return blende(i, pose);
+  weg(from, i).then(plan => {
+    if (zug !== meinZug) return;
+    if (plan) glideTo(pose, plan, () => show(i));
+    else blende(i, pose);
+  });
+}
+function blende(i, pose) {
   blendeEl.classList.add('zu');
   timer = setTimeout(() => {
     setView(...pose);
@@ -81,6 +99,8 @@ function end() {
   if (station < 0) return;
   station = -1;
   busy = false;
+  zug++;
+  wegeAbbrechen();
   clearTimeout(timer);
   clearTimeout(vorab);
   planAuto();

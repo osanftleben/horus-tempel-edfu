@@ -256,7 +256,7 @@ function sight(ax, az, bx, bz) {
   }
   return true;
 }
-function findPath(x, z, endLevel, endY) {
+function* findPath(x, z, endLevel, endY) {
   const p = camera.position, G = 0.4, M = 12, start = { x: p.x, z: p.z, level: curLevel, y: footY, prev: null };
   const x0 = Math.min(p.x, x) - M + 0.0731, z0 = Math.min(p.z, z) - M + 0.0377;
   const nx = Math.ceil((Math.abs(x - p.x) + 2 * M) / G), nz = Math.ceil((Math.abs(z - p.z) + 2 * M) / G);
@@ -291,6 +291,7 @@ function findPath(x, z, endLevel, endY) {
   start.f = h(start);
   push(start);
   for (let q = 0; heap.length && q < 8000; q++) {
+    if (q % 40 === 39) yield;
     const c = pop();
     if (Math.abs(c.i - ti) <= 1 && Math.abs(c.j - tj) <= 1 && c.level === endLevel && Math.abs(c.y - endY) < 0.3) {
       curLevel = c.level; footY = c.y;
@@ -317,11 +318,13 @@ function findPath(x, z, endLevel, endY) {
   }
   return null;
 }
-function straighten(path) {
+function* straighten(path) {
   const out = [path[0]];
   for (let a = 0; a < path.length - 1;) {
+    yield;
     let b = a + 1;
     for (let k = a + 2; k < path.length; k++) {
+      yield;
       curLevel = path[a].level; footY = path[a].y;
       if (!sight(path[a].x, path[a].z, path[k].x, path[k].z)) break;
       b = k;
@@ -331,7 +334,7 @@ function straighten(path) {
   }
   return out;
 }
-function planGlide([x, z, , , level = 0, y = 0]) {
+function* planSteps([x, z, , , level = 0, y = 0]) {
   const p = camera.position, saved = [curLevel, footY];
   if (Math.hypot(x - p.x, z - p.z) > 80) return null;
   curLevel = level; footY = y; updateLevel(x, z);
@@ -341,8 +344,8 @@ function planGlide([x, z, , , level = 0, y = 0]) {
     ? [{ x: p.x, z: p.z }, { x, z }] : null;
   [curLevel, footY] = saved;
   if (!pts) {
-    const path = findPath(x, z, endLevel, endY);
-    pts = path && straighten(path);
+    const path = yield* findPath(x, z, endLevel, endY);
+    pts = path && (yield* straighten(path));
     [curLevel, footY] = saved;
   }
   if (!pts) return null;
@@ -362,6 +365,30 @@ function planGlide([x, z, , , level = 0, y = 0]) {
     marks.push(marks[k - 1] + 0.25 * (1 + 3 * Math.min(1, slope)));
   }
   return { pts, len, marks, cost: marks[marks.length - 1] };
+}
+function planGlide(pose) {
+  const steps = planSteps(pose);
+  for (;;) {
+    const r = steps.next();
+    if (r.done) return r.value;
+  }
+}
+function planGlideLater(pose) {
+  const steps = planSteps(pose);
+  let cancelled = false;
+  const promise = new Promise(resolve => {
+    const slice = () => {
+      if (cancelled) return resolve(null);
+      const keep = [curLevel, footY], until = performance.now() + 4;
+      let r;
+      do r = steps.next(); while (!r.done && performance.now() < until);
+      [curLevel, footY] = keep;
+      if (r.done) resolve(r.value);
+      else requestAnimationFrame(slice);
+    };
+    requestAnimationFrame(slice);
+  });
+  return { promise, cancel: () => { cancelled = true; } };
 }
 const RAMP = 1.5;
 function glideTo([, , yawDeg, pitchDeg = 0], { pts, len, marks, cost }, done) {
@@ -526,4 +553,4 @@ function updateEye(dt) {
   if (pose !== lastPose) { poseEl.textContent = pose; lastPose = pose; }
 }
 
-export { EYE_KEY, curLevel, eyeState, floorAt, glideTo, gliding, holdView, planGlide, isFree, onFloor, paintTarget, roomAt, setLevel, setView, updateControls, updateEye };
+export { EYE_KEY, curLevel, eyeState, floorAt, glideTo, gliding, holdView, planGlide, planGlideLater, isFree, onFloor, paintTarget, roomAt, setLevel, setView, updateControls, updateEye };

@@ -5,6 +5,7 @@ import { standLightAt } from './lampen.js';
 import { state } from './himmel.js';
 import { gliding, roomAt } from './steuerung.js';
 import { boe } from './wind.js';
+import { milanRichtung } from './voegel.js';
 
 const toggle = document.getElementById('sound'), startEl = document.getElementById('start');
 const TOENE = [146.8, 174.6, 196, 220, 261.6, 293.7];
@@ -145,10 +146,10 @@ function schakale(t) {
   }
   ruf(TIERE.klaeffen, t + 2.5 + Math.random());
 }
-function ruf({ toene, vib, laut = 1 }, t) {
+function ruf({ toene, vib, laut = 1 }, t, richtung = Math.random() * 1.6 - 0.8) {
   const osc = ctx.createOscillator(), g = ctx.createGain(), pan = ctx.createStereoPanner(), lfo = ctx.createOscillator(), tiefe = ctx.createGain();
   const staerke = laut * (0.3 + Math.random() * 0.7), end = t + Math.max(...toene.map(([at, dur]) => at + dur));
-  pan.pan.value = Math.random() * 1.6 - 0.8;
+  pan.pan.value = richtung;
   g.gain.value = 0;
   lfo.frequency.value = vib[0];
   tiefe.gain.value = vib[1];
@@ -253,7 +254,7 @@ function update() {
   if (nextTier < now) nextTier = now + 3 + Math.random() * 10;
   else if (nextTier < now + 0.2) {
     if (night > 0.9) Math.random() < 0.12 ? schakale(nextTier) : ruf(TIERE.eule, nextTier);
-    else if (night < 0.1) ruf(Math.random() < 0.7 ? TIERE.taube : TIERE.milan, nextTier);
+    else if (night < 0.1) Math.random() < 0.7 ? ruf(TIERE.taube, nextTier) : ruf(TIERE.milan, nextTier, milanRichtung());
     nextTier += 12 + Math.random() * 25;
   }
   smooth(cricketBus.gain, 0.012 * night * open, 1);

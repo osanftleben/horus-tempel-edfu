@@ -237,6 +237,7 @@ function setView(x, z, yawDeg, pitchDeg = 0, level = 0, y = 0) {
   eyeY = footY + EYE;
 }
 let hold = null, glide = null;
+const gliding = () => !!glide;
 function holdView(onMove) {
   hold = onMove;
   glide = null;
@@ -525,4 +526,4 @@ function updateEye(dt) {
   if (pose !== lastPose) { poseEl.textContent = pose; lastPose = pose; }
 }
 
-export { EYE_KEY, curLevel, eyeState, floorAt, glideTo, holdView, planGlide, isFree, onFloor, paintTarget, roomAt, setLevel, setView, updateControls, updateEye };
+export { EYE_KEY, curLevel, eyeState, floorAt, glideTo, gliding, holdView, planGlide, isFree, onFloor, paintTarget, roomAt, setLevel, setView, updateControls, updateEye };

@@ -3,11 +3,13 @@ import { OPEN_ZONES, zoneAtPoint } from './masse.js';
 import { lampLevel } from './licht.js';
 import { standLightAt } from './lampen.js';
 import { state } from './himmel.js';
+import { gliding, roomAt } from './steuerung.js';
 
 const toggle = document.getElementById('sound'), startEl = document.getElementById('start');
 const TOENE = [146.8, 174.6, 196, 220, 261.6, 293.7];
 let ctx = null, out, hall, tierBus, nextTier = 0, wind, windFilter, heulen = [], roar, fizz, crackleBus, cricketBus, knacken = [], grillen = [];
 let open = 1, gust = 0.5, gustZiel = 0.5, gustBis = 0;
+let rauschen, schrittBus, hallGross, hallKlein, zuletzt = null, weg = 0;
 const smooth = (param, v, tc) => param.setTargetAtTime(v, ctx.currentTime, tc);
 
 function noiseBuffer(sec, shape = () => 1) {
@@ -35,7 +37,17 @@ function build() {
   out = ctx.createGain();
   out.gain.value = 0;
   out.connect(ctx.destination);
-  const noise = noiseBuffer(4);
+  const noise = rauschen = noiseBuffer(4);
+  schrittBus = ctx.createGain();
+  schrittBus.gain.value = 0.15;
+  schrittBus.connect(out);
+  [hallGross, hallKlein] = [2.5, 0.5].map(sec => {
+    const c = ctx.createConvolver(), g = ctx.createGain();
+    c.buffer = impulse(sec);
+    g.gain.value = 0;
+    schrittBus.connect(g).connect(c).connect(out);
+    return g;
+  });
   windFilter = ctx.createBiquadFilter();
   windFilter.type = 'bandpass';
   windFilter.frequency.value = 450;
@@ -157,6 +169,55 @@ function ruf({ toene, vib, laut = 1 }, t) {
   }
 }
 
+function knall(t, a, typ, f, Q, dauer, anschlag = 0.004) {
+  const s = ctx.createBufferSource(), filter = ctx.createBiquadFilter(), g = ctx.createGain();
+  s.buffer = rauschen;
+  filter.type = typ;
+  filter.frequency.value = f;
+  filter.Q.value = Q;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(a, t + anschlag);
+  g.gain.setTargetAtTime(0, t + anschlag, dauer / 4);
+  s.connect(filter).connect(g).connect(schrittBus);
+  s.start(t, Math.random() * 3.5, dauer + 0.05);
+}
+function schritt(t, kraft, treppe) {
+  const v = kraft * (0.7 + Math.random() * 0.6);
+  const koerper = ctx.createOscillator(), g = ctx.createGain();
+  koerper.frequency.setValueAtTime(70 + Math.random() * 15, t);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.06 * v, t + 0.004);
+  g.gain.setTargetAtTime(0, t + 0.004, 0.012);
+  koerper.connect(g).connect(schrittBus);
+  koerper.start(t);
+  koerper.stop(t + 0.1);
+  knall(t, 0.3 * v * (treppe < 0 ? 1.3 : 1), 'bandpass', 450 + Math.random() * 250, 0.9, 0.025);
+  knall(t + 0.05 + Math.random() * 0.03, 0.16 * v * (treppe > 0 ? 1.3 : 1), 'bandpass', 700 + Math.random() * 300, 1.1, 0.018);
+  const klapp = t + 0.16 + Math.random() * 0.08, laut = v * (treppe ? 0.6 : 0.25) * (0.6 + Math.random() * 0.4);
+  knall(klapp, laut, 'highpass', 1300 + Math.random() * 700, 0.5, 0.025, 0.001);
+  knall(klapp + 0.012 + Math.random() * 0.01, 0.6 * laut, 'bandpass', 1000 + Math.random() * 400, 0.6, 0.02, 0.001);
+}
+function schritte(now, p) {
+  const t = performance.now() / 1000, last = zuletzt;
+  zuletzt = { x: p.x, y: p.y, z: p.z, t };
+  if (!last) return;
+  const dh = Math.hypot(p.x - last.x, p.z - last.z), dt = t - last.t, v = dh / dt;
+  if (gliding() || dh > 1.5 || !(dt > 0) || v < 0.3) {
+    weg = 0.45;
+    return;
+  }
+  const treppe = Math.abs(p.y - last.y) > 0.3 * dh ? Math.sign(p.y - last.y) : 0, rennen = v > 2.2;
+  const schrittweite = treppe ? 0.5 : rennen ? 1.25 : 0.75;
+  if (weg + dh >= schrittweite) {
+    const anteil = (schrittweite - weg) / dh;
+    schritt(now - dt * (1 - anteil) + 0.12, rennen ? 1.4 : treppe ? 1.15 : 1, treppe);
+    weg = weg + dh - schrittweite;
+  } else weg += dh;
+  const raum = open > 0.5 ? null : roomAt(p.x, p.z), flaeche = raum ? (raum.x1 - raum.x0) * (raum.z1 - raum.z0) : 0;
+  smooth(hallGross.gain, open > 0.5 ? 0.04 : flaeche > 120 ? 0.45 : 0.08, 0.5);
+  smooth(hallKlein.gain, open > 0.5 || flaeche > 120 ? 0 : 0.35, 0.5);
+}
+
 function update() {
   if (!ctx) return;
   const on = toggle.checked && startEl.classList.contains('hidden') && !document.hidden;
@@ -164,6 +225,7 @@ function update() {
   if (!on) return;
   const now = ctx.currentTime, p = camera.position;
   open += ((OPEN_ZONES.includes(zoneAtPoint(p.x, p.y, p.z)) ? 1 : 0) - open) * 0.15;
+  schritte(now, p);
   if (now > gustBis) {
     gustZiel = Math.random() ** 2;
     gustBis = now + 0.5 + Math.random() * 2;

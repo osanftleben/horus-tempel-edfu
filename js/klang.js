@@ -4,11 +4,12 @@ import { lampLevel } from './licht.js';
 import { standLightAt } from './lampen.js';
 import { state } from './himmel.js';
 import { gliding, roomAt } from './steuerung.js';
+import { boe } from './wind.js';
 
 const toggle = document.getElementById('sound'), startEl = document.getElementById('start');
 const TOENE = [146.8, 174.6, 196, 220, 261.6, 293.7];
 let ctx = null, out, hall, tierBus, nextTier = 0, wind, windFilter, heulen = [], roar, fizz, crackleBus, cricketBus, knacken = [], grillen = [];
-let open = 1, gust = 0.5, gustZiel = 0.5, gustBis = 0;
+let open = 1;
 let rauschen, schrittBus, hallGross, hallKlein, zuletzt = null, weg = 0;
 const smooth = (param, v, tc) => param.setTargetAtTime(v, ctx.currentTime, tc);
 
@@ -226,12 +227,7 @@ function update() {
   const now = ctx.currentTime, p = camera.position;
   open += ((OPEN_ZONES.includes(zoneAtPoint(p.x, p.y, p.z)) ? 1 : 0) - open) * 0.15;
   schritte(now, p);
-  if (now > gustBis) {
-    gustZiel = Math.random() ** 2;
-    gustBis = now + 0.5 + Math.random() * 2;
-  }
-  gust += (gustZiel - gust) * 0.12 + (Math.random() - 0.5) * 0.04;
-  gust = Math.min(1, Math.max(0, gust));
+  const gust = boe();
   smooth(wind.gain, (0.018 + 0.06 * gust) * (0.05 + 0.95 * open), 0.4);
   smooth(windFilter.frequency, (300 + 600 * gust) * (0.5 + 0.5 * open), 0.4);
   for (const h of heulen) {

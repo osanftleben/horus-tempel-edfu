@@ -57,7 +57,7 @@ const taaMat = new THREE.ShaderMaterial({
       vec3 res = cur;
       if (uReset < 0.5 && all(greaterThanEqual(puv, vec2(0.0))) && all(lessThanEqual(puv, vec2(1.0)))) {
         vec3 hist = clamp(squash(history(puv)), lo, hi);
-        res = mix(hist, cur, 0.1);
+        res = mix(hist, cur, texture2D(tDiffuse, vUv).a < 0.75 ? 0.6 : 0.1);
         a = mix(texture2D(tHistory, puv).a, a, 0.1);
       }
       gl_FragColor = vec4(unsquash(res), a);

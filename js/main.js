@@ -14,6 +14,7 @@ import { updatePlan } from './grundriss.js';
 import './rundgang.js';
 import './klang.js';
 import { fotoNachBild } from './foto.js';
+import { updateWind } from './wind.js';
 import { EYE_KEY, curLevel, eyeState, floorAt, isFree, paintTarget, roomAt, setLevel, setView, updateControls, updateEye } from './steuerung.js';
 
 const SEALED = ZONES.filter(z => z.portals).map(zone => ({ zone,
@@ -106,6 +107,7 @@ function frame() {
   updatePlan();
   updateLamp(dt, clock.elapsedTime);
   updateStandLamps(dt, clock.elapsedTime);
+  updateWind(dt);
   dustMat.uniforms.uTime.value = clock.elapsedTime;
   stars.uniforms.uTime.value = clock.elapsedTime;
   paintUniform.value += (paintTarget - paintUniform.value) * Math.min(1, dt * 3);

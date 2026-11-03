@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { M, PF } from '../masse.js';
+import { M, PF, f3 } from '../masse.js';
 import { scene } from '../szene.js';
 import { graniteMap } from '../texturen.js';
-import { diskMat, floorMat, graniteMat, lit, naosMat, sandMat, uraeusMat, woodMat } from '../material.js';
+import { diskMat, floorMat, graniteMat, lit, naosMat, paintUniform, sandMat, uraeusMat, woodMat } from '../material.js';
+import { windPhase, windStaerke } from '../wind.js';
 import { mirrorX } from './helfer.js';
 import { EN, ET } from './pylon-hof.js';
 import { HB, HF, HH, SCREENS } from './pronaos.js';
@@ -177,17 +178,85 @@ const mastX = [11, 14.5, 27.5, 31];
 const mastPos = [];
 mirrorX(s => { for (const x of mastX) mastPos.push([s * x, M.pylonFront + 0.7]); });
 const mastGeo = new THREE.CylinderGeometry(0.3, 0.42, 40, 12).translate(0, 20, 0);
-const mastGeos = [], flagGeos = [];
-for (const [x, z] of mastPos) {
-  mastGeos.push(mastGeo.clone().translate(x, 0, z));
-  for (const turn of [0, Math.PI]) flagGeos.push(new THREE.PlaneGeometry(1.2, 5).rotateY(turn).translate(x + 0.9, 36.5, z));
-}
-const mast = new THREE.Mesh(mergeGeometries(mastGeos), woodMat);
+const mast = new THREE.Mesh(mergeGeometries(mastPos.map(([x, z]) => mastGeo.clone().translate(x, 0, z))), woodMat);
 mast.castShadow = true;
 scene.add(mast);
-const flags = new THREE.Mesh(mergeGeometries(flagGeos), lit(new THREE.MeshStandardMaterial({ color: 0xb03a2a, roughness: 0.9 })));
-flags.castShadow = true;
-scene.add(flags);
+
+const FLAG_L = 7, FLAG_NS = 32, WIND_DIR = new THREE.Vector3(0.75, 0, 0.66).normalize();
+const FLAG_COLORS = [0xb03a2a, 0x24467e, 0x3f7a4a, 0xe4dcc8].map(c => new THREE.Color(c));
+const FLAG_GLSL = `
+uniform float uWindStaerke, uWindPhase;
+attribute vec3 aRoot, aFlag, aFarbe;
+varying vec3 vFarbe;
+const vec3 WDIR = vec3(${f3(WIND_DIR.x)}, 0.0, ${f3(WIND_DIR.z)}), WSIDE = vec3(${f3(WIND_DIR.z)}, 0.0, ${f3(-WIND_DIR.x)});
+void flagPose(out vec3 p, out vec3 n) {
+  float s = aFlag.x, u = s / ${f3(FLAG_L)}, ph = uWindPhase + aFlag.z;
+  float a = mix(0.85, 0.12, uWindStaerke) + 0.1 * sin(ph * 0.25 + aFlag.z);
+  float amp = 0.15 + 0.35 * uWindStaerke, k = 6.2832 / 3.2, w = k * s - ph;
+  vec3 along = WDIR * cos(a) - vec3(0.0, sin(a), 0.0);
+  p = aRoot + along * s + vec3(0.0, aFlag.y, 0.0) + WSIDE * amp * pow(u, 1.3) * sin(w);
+  vec3 dPds = along + WSIDE * amp * (1.3 * pow(max(u, 1e-4), 0.3) / ${f3(FLAG_L)} * sin(w) + pow(u, 1.3) * k * cos(w));
+  n = normalize(cross(dPds, vec3(0.0, 1.0, 0.0)));
+}`;
+function flagVertex(shader, normals) {
+  shader.uniforms.uWindStaerke = windStaerke;
+  shader.uniforms.uWindPhase = windPhase;
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', `#include <common>\n${FLAG_GLSL}`)
+    .replace('#include <begin_vertex>', normals ? 'vec3 transformed = flagP;\nvFarbe = aFarbe;' : 'vec3 transformed, flagN;\nflagPose(transformed, flagN);');
+  if (normals) shader.vertexShader = shader.vertexShader.replace('#include <beginnormal_vertex>', 'vec3 flagP, objectNormal;\nflagPose(flagP, objectNormal);');
+}
+const flagMat = lit(new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }));
+const ambient = flagMat.onBeforeCompile;
+flagMat.onBeforeCompile = shader => {
+  ambient(shader);
+  flagVertex(shader, true);
+  shader.uniforms.uPaint = paintUniform;
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\nvarying vec3 vFarbe;\nuniform float uPaint;')
+    .replace('#include <color_fragment>', 'diffuseColor.rgb *= mix(vec3(0.62, 0.56, 0.47), vFarbe, uPaint);')
+    .replace('#include <opaque_fragment>', '#include <opaque_fragment>\ngl_FragColor.a = 0.5;');
+};
+flagMat.customProgramCacheKey = () => 'amb-fahne';
+const flagDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, side: THREE.DoubleSide });
+flagDepth.onBeforeCompile = shader => flagVertex(shader, false);
+flagDepth.customProgramCacheKey = () => 'fahne';
+{
+  const pos = [], root = [], flag = [], farbe = [], index = [];
+  mastPos.forEach(([x, z], m) => {
+    const c = FLAG_COLORS[mastX.indexOf(Math.abs(x))], seed = m * 2.39;
+    const n0 = pos.length / 3;
+    for (let i = 0; i <= FLAG_NS; i++) {
+      const s = i / FLAG_NS * FLAG_L, h = 0.7 - 0.58 * i / FLAG_NS;
+      for (const t of [-h, 0, h]) {
+        pos.push(x + WIND_DIR.x * (0.32 + s * 0.88), 38.6 + t - s * 0.48, z + WIND_DIR.z * (0.32 + s * 0.88));
+        root.push(x + WIND_DIR.x * 0.32, 38.6, z + WIND_DIR.z * 0.32);
+        flag.push(s, t, seed);
+        farbe.push(c.r, c.g, c.b);
+      }
+    }
+    for (let i = 0; i < FLAG_NS; i++) for (let j = 0; j < 2; j++) {
+      const a = n0 + i * 3 + j, b = a + 3;
+      index.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0), 3));
+  g.setAttribute('aRoot', new THREE.Float32BufferAttribute(root, 3));
+  g.setAttribute('aFlag', new THREE.Float32BufferAttribute(flag, 3));
+  g.setAttribute('aFarbe', new THREE.Float32BufferAttribute(farbe, 3));
+  g.setIndex(index);
+  g.computeBoundingBox();
+  g.boundingBox.expandByScalar(3);
+  g.computeBoundingSphere();
+  g.boundingSphere.radius += 3;
+  const flags = new THREE.Mesh(g, flagMat);
+  flags.customDepthMaterial = flagDepth;
+  flags.castShadow = true;
+  flags.layers.set(1);
+  scene.add(flags);
+}
 
 function floorPlane(x0, x1, z0, z1, y, mat, tile) {
   const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;

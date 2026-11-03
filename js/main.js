@@ -12,6 +12,7 @@ import { AO, renderAO, setAOSize } from './verdeckung.js';
 import { measureKey } from './belichtung.js';
 import { updatePlan } from './grundriss.js';
 import './rundgang.js';
+import './klang.js';
 import { EYE_KEY, curLevel, eyeState, floorAt, isFree, paintTarget, roomAt, setLevel, setView, updateControls, updateEye } from './steuerung.js';
 
 const SEALED = ZONES.filter(z => z.portals).map(zone => ({ zone,

@@ -10,7 +10,7 @@ const STEPS = [
   ['Mauern bauen', './bau/mammisi.js', 2],
   ['Mauern bauen', './bau/mauerwerk.js', 6], ['Ausstattung', './bau/ausstattung.js', 7],
   ['Licht und Himmel', './licht.js', 11], ['Licht und Himmel', './strahlen.js', 5], ['Licht und Himmel', './himmel.js', 47],
-  ['Licht und Himmel', './glaettung.js', 2], ['Licht und Himmel', './rueckstrahlung.js', 17], ['Licht und Himmel', './lampen.js', 5],
+  ['Licht und Himmel', './glaettung.js', 2], ['Licht und Himmel', './rueckstrahlung.js', 17], ['Licht und Himmel', './lampen.js', 5], ['Landschaft', './landschaft.js', 5],
   ['Licht und Himmel', './steuerung.js', 2], ['Licht und Himmel', './main.js', 5],
 ];
 const stand = new Date(document.lastModified);

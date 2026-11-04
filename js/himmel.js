@@ -301,4 +301,4 @@ dayIn.addEventListener('input', () => { setLive(false); state.day = +dayIn.value
 hourIn.value = state.hour; dayIn.value = state.day;
 updateSun();
 
-export { SKY, dayIn, deg, hourIn, lastLive, live, moonDir, setLive, stars, state, sunDir, sunDirty, sunUpdated, syncNow, trueSun, updateSun };
+export { SKY, dayIn, deg, hourIn, lastLive, live, moonDir, setLive, skyDome, stars, state, sunDir, sunDirty, sunUpdated, syncNow, trueSun, updateSun };
